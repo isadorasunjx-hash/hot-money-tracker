@@ -1,0 +1,29 @@
+{
+  "name": "hot-money-tracker",
+  "version": "1.0.0",
+  "description": "Solana volume surge sniper skill for OKX Agentic Wallet — monitors on-chain volume anomalies and auto-executes trades with built-in stop-loss and take-profit.",
+  "main": "hot-money-tracker.js",
+  "author": "@isadora288881",
+  "license": "MIT",
+  "keywords": [
+    "okx",
+    "onchainos",
+    "solana",
+    "trading",
+    "agentic-wallet",
+    "meme",
+    "volume-surge",
+    "defi"
+  ],
+  "onchainos": {
+    "skills": [
+      "okx-dex-token",
+      "okx-dex-market",
+      "okx-wallet-portfolio",
+      "okx-dex-swap",
+      "okx-onchain-gateway"
+    ],
+    "chains": ["solana"],
+    "category": "momentum-trading"
+  }
+}
