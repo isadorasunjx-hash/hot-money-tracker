@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>跟读背单词 · Word Reader</title>
+<style>
+  :root {
+    --bg: #0f1226;
+    --card: #1a1f3c;
+    --card-2: #232a52;
+    --accent: #6c8cff;
+    --accent-2: #54e0c7;
+    --text: #eef1ff;
+    --muted: #9aa3c7;
+    --danger: #ff6b81;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, sans-serif;
+    background: radial-gradient(1200px 600px at 20% -10%, #2a3170 0%, transparent 60%),
+                radial-gradient(900px 500px at 110% 10%, #1f5a55 0%, transparent 55%),
+                var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px 60px;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  header h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: .5px; }
+  header p { color: var(--muted); margin: 0 0 22px; font-size: 14px; }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: var(--shadow);
+    margin-bottom: 18px;
+  }
+
+  label.small { display:block; color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+
+  textarea {
+    width: 100%;
+    min-height: 96px;
+    resize: vertical;
+    background: #0c1030;
+    color: var(--text);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 15px;
+    line-height: 1.5;
+    outline: none;
+  }
+  textarea:focus { border-color: var(--accent); }
+
+  .row { display:flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+  .grow { flex: 1 1 auto; }
+
+  button {
+    cursor: pointer;
+    border: none;
+    border-radius: 11px;
+    padding: 11px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #0c1030;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    transition: transform .06s ease, filter .15s ease;
+  }
+  button:hover { filter: brightness(1.07); }
+  button:active { transform: translateY(1px); }
+  button.ghost {
+    background: var(--card-2);
+    color: var(--text);
+    border: 1px solid rgba(255,255,255,.1);
+  }
+  button.danger { background: transparent; color: var(--danger); border: 1px solid rgba(255,107,129,.4); }
+
+  .controls { display:flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+  .field { display:flex; align-items:center; gap: 8px; color: var(--muted); font-size: 13px; }
+  select, input[type=range] { accent-color: var(--accent); }
+  select {
+    background: #0c1030; color: var(--text);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 9px; padding: 7px 9px; font-size: 13px;
+  }
+
+  ul.list { list-style: none; margin: 0; padding: 0; }
+  li.item {
+    background: var(--card-2);
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: border-color .15s ease, transform .06s ease;
+  }
+  li.item.speaking { border-color: var(--accent-2); box-shadow: 0 0 0 2px rgba(84,224,199,.25) inset; }
+  .play {
+    flex: 0 0 auto;
+    width: 46px; height: 46px; border-radius: 50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size: 18px; padding: 0;
+  }
+  .body { flex: 1 1 auto; min-width: 0; }
+  .en { font-size: 18px; font-weight: 600; word-break: break-word; }
+  .zh { color: var(--accent-2); font-size: 14px; margin-top: 3px; min-height: 18px; }
+  .zh.loading { color: var(--muted); }
+  .zh.err { color: var(--danger); }
+  .rm { flex: 0 0 auto; background: transparent; color: var(--muted); border: none; font-size: 18px; padding: 6px; }
+  .rm:hover { color: var(--danger); }
+
+  .empty { color: var(--muted); text-align:center; padding: 26px 0; font-size: 14px; }
+  footer { color: var(--muted); font-size: 12px; text-align:center; margin-top: 8px; }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>📖 跟读背单词</h1>
+    <p>输入英文单词或句子（每行一个）→ 点 ▶ 朗读发音 → 自动显示中文意思。</p>
+  </header>
+
+  <section class="panel">
+    <label class="small" for="input">输入英文单词 / 句子（每行一个）</label>
+    <textarea id="input" placeholder="apple&#10;How are you?&#10;perseverance"></textarea>
+    <div class="row">
+      <button id="addBtn" class="grow">➕ 添加到列表</button>
+      <button id="readAllBtn" class="ghost">🔊 全部跟读</button>
+      <button id="stopBtn" class="ghost">⏹ 停止</button>
+    </div>
+    <div class="hint">提示：点击列表中的发音按钮可单独朗读；中文释义会自动翻译。</div>
+  </section>
+
+  <section class="panel">
+    <div class="controls">
+      <div class="field">
+        🗣 语音
+        <select id="voiceSel"><option>加载中…</option></select>
+      </div>
+      <div class="field">
+        ⚡ 语速 <span id="rateVal">1.0</span>
+        <input id="rate" type="range" min="0.5" max="1.5" step="0.1" value="1" />
+      </div>
+      <button id="clearBtn" class="danger" style="margin-left:auto">清空列表</button>
+    </div>
+  </section>
+
+  <ul id="list" class="list"></ul>
+  <div id="empty" class="empty">还没有单词，先在上方输入并添加吧～</div>
+
+  <footer>纯前端 · 使用浏览器语音合成 (Web Speech API) 与免费翻译接口 · 数据保存在本地浏览器</footer>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const STORE_KEY = "word-reader-items-v1";
+
+let items = load();            // [{ id, en, zh }]
+let voices = [];
+let speakingId = null;
+
+/* ---------- persistence ---------- */
+function load() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; }
+  catch { return []; }
+}
+function save() { localStorage.setItem(STORE_KEY, JSON.stringify(items)); }
+
+/* ---------- voices ---------- */
+function loadVoices() {
+  voices = speechSynthesis.getVoices().filter(v => /en/i.test(v.lang));
+  if (!voices.length) voices = speechSynthesis.getVoices();
+  const sel = $("#voiceSel");
+  sel.innerHTML = "";
+  voices.forEach((v, i) => {
+    const o = document.createElement("option");
+    o.value = i;
+    o.textContent = `${v.name} (${v.lang})`;
+    sel.appendChild(o);
+  });
+  // prefer a US/UK English voice by default
+  const pref = voices.findIndex(v => /en-US|en-GB/i.test(v.lang));
+  if (pref >= 0) sel.value = pref;
+}
+speechSynthesis.onvoiceschanged = loadVoices;
+loadVoices();
+
+/* ---------- speech ---------- */
+function speak(text, id) {
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  const v = voices[$("#voiceSel").value];
+  if (v) { u.voice = v; u.lang = v.lang; }
+  u.rate = parseFloat($("#rate").value);
+  u.onstart = () => { speakingId = id; render(); };
+  u.onend = () => { speakingId = null; render(); };
+  speechSynthesis.speak(u);
+  return u;
+}
+
+function readAll() {
+  speechSynthesis.cancel();
+  items.forEach((it) => {
+    const u = new SpeechSynthesisUtterance(it.en);
+    const v = voices[$("#voiceSel").value];
+    if (v) { u.voice = v; u.lang = v.lang; }
+    u.rate = parseFloat($("#rate").value);
+    u.onstart = () => { speakingId = it.id; render(); };
+    u.onend = () => { if (speakingId === it.id) { speakingId = null; render(); } };
+    speechSynthesis.speak(u);
+  });
+}
+
+/* ---------- translation ---------- */
+async function translate(text) {
+  // MyMemory free translation API (no key required)
+  const url = "https://api.mymemory.translated.net/get?q=" +
+              encodeURIComponent(text) + "&langpair=en|zh-CN";
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("net");
+  const data = await res.json();
+  const t = data?.responseData?.translatedText;
+  if (!t) throw new Error("empty");
+  return t;
+}
+
+async function ensureTranslation(it) {
+  if (it.zh) return;
+  const el = document.querySelector(`#zh-${it.id}`);
+  if (el) { el.textContent = "翻译中…"; el.className = "zh loading"; }
+  try {
+    it.zh = await translate(it.en);
+    save();
+  } catch {
+    if (el) { el.textContent = "翻译失败，点此重试"; el.className = "zh err"; }
+    return;
+  }
+  if (el) { el.textContent = it.zh; el.className = "zh"; }
+}
+
+/* ---------- list ops ---------- */
+function addFromInput() {
+  const lines = $("#input").value.split("\n").map(s => s.trim()).filter(Boolean);
+  if (!lines.length) return;
+  lines.forEach(en => {
+    if (items.some(it => it.en.toLowerCase() === en.toLowerCase())) return;
+    items.push({ id: Math.random().toString(36).slice(2, 9), en, zh: "" });
+  });
+  $("#input").value = "";
+  save();
+  render();
+  items.forEach(ensureTranslation);
+}
+
+function removeItem(id) {
+  items = items.filter(it => it.id !== id);
+  save();
+  render();
+}
+
+function clearAll() {
+  if (!items.length) return;
+  if (!confirm("确定清空整个单词列表？")) return;
+  items = [];
+  save();
+  render();
+}
+
+/* ---------- render ---------- */
+function render() {
+  const list = $("#list");
+  $("#empty").style.display = items.length ? "none" : "block";
+  list.innerHTML = "";
+  items.forEach(it => {
+    const li = document.createElement("li");
+    li.className = "item" + (speakingId === it.id ? " speaking" : "");
+
+    const play = document.createElement("button");
+    play.className = "play";
+    play.textContent = speakingId === it.id ? "❚❚" : "▶";
+    play.title = "朗读";
+    play.onclick = () => speak(it.en, it.id);
+
+    const body = document.createElement("div");
+    body.className = "body";
+    const en = document.createElement("div");
+    en.className = "en";
+    en.textContent = it.en;
+    const zh = document.createElement("div");
+    zh.id = "zh-" + it.id;
+    zh.className = "zh" + (it.zh ? "" : " loading");
+    zh.textContent = it.zh || "翻译中…";
+    zh.style.cursor = "pointer";
+    zh.title = "点击重新翻译";
+    zh.onclick = () => { it.zh = ""; ensureTranslation(it); };
+    body.appendChild(en);
+    body.appendChild(zh);
+
+    const rm = document.createElement("button");
+    rm.className = "rm";
+    rm.textContent = "✕";
+    rm.title = "删除";
+    rm.onclick = () => removeItem(it.id);
+
+    li.appendChild(play);
+    li.appendChild(body);
+    li.appendChild(rm);
+    list.appendChild(li);
+  });
+}
+
+/* ---------- events ---------- */
+$("#addBtn").onclick = addFromInput;
+$("#readAllBtn").onclick = readAll;
+$("#stopBtn").onclick = () => { speechSynthesis.cancel(); speakingId = null; render(); };
+$("#clearBtn").onclick = clearAll;
+$("#rate").oninput = (e) => $("#rateVal").textContent = parseFloat(e.target.value).toFixed(1);
+$("#input").addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") addFromInput();
+});
+
+/* ---------- init ---------- */
+render();
+items.forEach(ensureTranslation);
+</script>
+</body>
+</html>
