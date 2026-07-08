@@ -194,6 +194,10 @@
     display: flex; align-items: center; gap: .55rem .85rem; flex-wrap: wrap;
     margin-top: .75rem; font-size: .82rem; color: var(--ink-faint);
   }
+  .tax .rate-label {
+    font-size: .72rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600;
+  }
   .tax .rate { display: flex; align-items: center; gap: .3rem; font-variant-numeric: tabular-nums; }
   .tax .rate input {
     width: 3.6ch; font: inherit; font-size: .85rem; padding: 0 0 .1rem; text-align: center;
@@ -380,7 +384,7 @@
     <div class="spend-row">
       <div class="field">
         <div class="spend-head">
-          <label for="spend">消费金额</label>
+          <label for="spend">消费金额 · 含税总价</label>
           <div class="seg" role="group" aria-label="币种">
             <button type="button" id="curUSD" class="on">美元 $</button>
             <button type="button" id="curRMB">人民币 ¥</button>
@@ -396,9 +400,10 @@
           <span class="conv" id="convNote"></span>
         </div>
         <div class="tax">
-          <div class="seg sm" role="group" aria-label="金额是否含税">
-            <button type="button" id="taxIncl" class="on">含税</button>
-            <button type="button" id="taxExcl">不含税</button>
+          <span class="rate-label">计积分方式</span>
+          <div class="seg sm" role="group" aria-label="计积分方式">
+            <button type="button" id="taxDeduct" class="on">扣税计分</button>
+            <button type="button" id="taxKeep">不扣税</button>
           </div>
           <span class="rate">税率 <input id="taxRate" type="number" min="0" max="40" step="0.5" value="6" inputmode="decimal" aria-label="税率百分比">%</span>
           <span class="tax-note" id="taxNote"></span>
@@ -496,7 +501,7 @@
 
   <div class="notes">
     <p><b>取值口径</b>　万豪：基础 10 分/美元；白金 +50% 奖励；1 分 ≈ ¥0.05。凯悦：基础 5 分/美元；环球客 +30% 奖励；1 分 ≈ ¥0.12。奖励仅作用于基础消费积分，欢迎积分为固定赠送、不加成。</p>
-    <p><b>关于税</b>　酒店积分通常只按<b>税前房费</b>累积，税费与服务费一般不计分。默认按含税总价、税率 6%（中国住宿增值税）先剥离税额再计分，可自行调整——境外城市税 / 度假费常见 10%–20%+。</p>
+    <p><b>关于税</b>　金额按<b>含税总价</b>输入。「扣税计分」先剥离税额、只按税前房费累积（酒店积分通常只算税前，税费与服务费不计分）；「不扣税」则按全额计分。默认税率 6%——按财税〔2016〕36 号，中国住宿服务一般纳税人（年销售额 &gt; 500 万）增值税 6%，小规模纳税人 3%；境外城市税 / 度假费常见 10%–20%+，可自行调整。</p>
     <p>积分价值为估算参考，实际兑换价值随房型、旺季、转点渠道浮动，不构成任何消费建议。</p>
   </div>
 </div>
@@ -546,7 +551,7 @@
 
   // ---- currency (input can be USD or RMB) + tax ----
   let currency = "USD";
-  let taxIncluded = true;
+  let deductTax = true;  // the amount entered is always a tax-inclusive total
   const PRESETS = { USD: [100, 200, 500, 1000], RMB: [1000, 2000, 5000, 10000] };
   const SLIDER_MAX = { USD: 2000, RMB: 15000 };
   const STEP = { USD: 10, RMB: 100 };
@@ -555,14 +560,16 @@
   const symbol = () => (currency === "USD" ? "$" : "¥");
   const taxRate = () => Math.max(0, (parseFloat($("taxRate").value) || 0) / 100);
 
-  // Points accrue on the pre-tax room rate only, so split tax out first.
+  // Input is a tax-inclusive price. Points accrue on the pre-tax room rate,
+  // so "扣税计分" earns on gross/(1+rate); "不扣税" earns on the full amount.
   function amounts() {
     const gross = Math.max(0, parseFloat($("spend").value) || 0);
     const t = taxRate();
     const toUSD = currency === "USD" ? 1 : 1 / fxRate();
-    const taxable = taxIncluded ? (t > 0 ? gross / (1 + t) : gross) : gross;
-    const tax = taxIncluded ? gross - taxable : gross * t;
-    return { gross, taxable, tax, grossUSD: gross * toUSD, taxableUSD: taxable * toUSD };
+    const preTax = t > 0 ? gross / (1 + t) : gross;
+    const tax = gross - preTax;
+    const taxable = deductTax ? preTax : gross;
+    return { gross, preTax, tax, taxable, grossUSD: gross * toUSD, taxableUSD: taxable * toUSD };
   }
   const spendUSD = () => amounts().taxableUSD;
 
@@ -601,14 +608,14 @@
   $("curUSD").addEventListener("click", () => setCurrency("USD"));
   $("curRMB").addEventListener("click", () => setCurrency("RMB"));
 
-  function setTax(inc) {
-    taxIncluded = inc;
-    $("taxIncl").classList.toggle("on", inc);
-    $("taxExcl").classList.toggle("on", !inc);
+  function setDeduct(on) {
+    deductTax = on;
+    $("taxDeduct").classList.toggle("on", on);
+    $("taxKeep").classList.toggle("on", !on);
     render();
   }
-  $("taxIncl").addEventListener("click", () => setTax(true));
-  $("taxExcl").addEventListener("click", () => setTax(false));
+  $("taxDeduct").addEventListener("click", () => setDeduct(true));
+  $("taxKeep").addEventListener("click", () => setDeduct(false));
   $("taxRate").addEventListener("input", render);
 
   function tierOf(prog, sel) { return prog.tiers.find(t => t.key === sel.value); }
@@ -642,8 +649,8 @@
     $("convNote").textContent = currency === "RMB" && a.gross > 0 ? `≈ $${money(a.grossUSD)}` : "";
     if (a.gross <= 0) $("taxNote").textContent = "";
     else if (taxRate() <= 0) $("taxNote").textContent = "税率 0 · 全额计积分";
-    else if (taxIncluded) $("taxNote").textContent = `含税 ${sym}${money(a.tax)} · 按 ${sym}${money(a.taxable)} 计积分`;
-    else $("taxNote").textContent = `另交税 ${sym}${money(a.tax)}（不计分）· 实付 ${sym}${money(a.gross + a.tax)}`;
+    else if (deductTax) $("taxNote").textContent = `扣税 ${sym}${money(a.tax)} · 按税前 ${sym}${money(a.preTax)} 计积分`;
+    else $("taxNote").textContent = `按全额 ${sym}${money(a.gross)} 计积分（含税 ${sym}${money(a.tax)} 未扣）`;
 
     const m = compute(MARRIOTT, $("mTier"), spend, welcome);
     const h = compute(HYATT, $("hTier"), spend, 0);
