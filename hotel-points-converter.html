@@ -162,6 +162,33 @@
   }
   .preset:hover { border-color: var(--brass); color: var(--brass); }
 
+  .spend-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap;
+  }
+  .seg {
+    display: inline-flex; border: 1px solid var(--line-strong);
+    border-radius: 999px; overflow: hidden; flex: none;
+  }
+  .seg button {
+    font: inherit; font-size: .78rem; padding: .3rem .85rem;
+    border: none; background: transparent; color: var(--ink-soft); cursor: pointer;
+  }
+  .seg button.on { background: var(--brass); color: #fff; font-weight: 600; }
+  .fx {
+    display: flex; align-items: center; gap: .35rem;
+    font-size: .82rem; color: var(--ink-faint); margin-top: .55rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .fx input {
+    width: 4.5ch; font: inherit; font-size: .85rem; padding: 0 0 .1rem;
+    border: none; border-bottom: 1px solid var(--line-strong);
+    background: transparent; color: var(--ink); text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .fx input:focus { outline: none; border-bottom-color: var(--brass); color: var(--brass); }
+  .fx .conv { color: var(--ink-soft); }
+
   .tier-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -305,16 +332,26 @@
 <div class="wrap">
   <p class="eyebrow">Loyalty Value Calculator</p>
   <h1>酒店积分换算器</h1>
-  <p class="lede">输入一笔消费，实时对比万豪 Bonvoy 与凯悦 World of Hyatt 能拿到多少积分、折合多少人民币，以及哪家每一美元更值。</p>
+  <p class="lede">按美元或人民币输入一笔消费，实时对比万豪 Bonvoy 与凯悦 World of Hyatt 能拿到多少积分、折合多少人民币，以及哪家每一美元更值。</p>
 
   <div class="panel">
     <div class="spend-row">
       <div class="field">
-        <label for="spend">消费金额</label>
+        <div class="spend-head">
+          <label for="spend">消费金额</label>
+          <div class="seg" role="group" aria-label="币种">
+            <button type="button" id="curUSD" class="on">美元 $</button>
+            <button type="button" id="curRMB">人民币 ¥</button>
+          </div>
+        </div>
         <div class="spend-input">
-          <span class="cur">$</span>
-          <input id="spend" type="number" min="0" step="10" value="200" inputmode="decimal" aria-label="消费金额（美元）">
-          <span class="unit">USD</span>
+          <span class="cur" id="curSym">$</span>
+          <input id="spend" type="number" min="0" step="10" value="200" inputmode="decimal" aria-label="消费金额">
+          <span class="unit" id="curUnit">USD</span>
+        </div>
+        <div class="fx" id="fxRow" style="display:none">
+          汇率 $1 = ¥<input id="fxRate" type="number" min="0.1" step="0.05" value="7.20" inputmode="decimal" aria-label="美元兑人民币汇率">
+          <span class="conv" id="convNote"></span>
         </div>
       </div>
       <div class="slider-wrap">
@@ -430,12 +467,53 @@
   fillSelect($("mTier"), MARRIOTT);
   fillSelect($("hTier"), HYATT);
 
-  [100, 200, 500, 1000].forEach(v => {
-    const b = document.createElement("button");
-    b.className = "preset"; b.textContent = "$" + v;
-    b.onclick = () => { setSpend(v); };
-    $("presets").appendChild(b);
-  });
+  // ---- currency (input can be USD or RMB) ----
+  let currency = "USD";
+  const PRESETS = { USD: [100, 200, 500, 1000], RMB: [1000, 2000, 5000, 10000] };
+  const SLIDER_MAX = { USD: 2000, RMB: 15000 };
+  const STEP = { USD: 10, RMB: 100 };
+
+  const fxRate = () => Math.max(0.1, parseFloat($("fxRate").value) || 7.2);
+  const symbol = () => (currency === "USD" ? "$" : "¥");
+  function spendUSD() {
+    const a = Math.max(0, parseFloat($("spend").value) || 0);
+    return currency === "USD" ? a : a / fxRate();
+  }
+
+  function buildPresets() {
+    const box = $("presets");
+    box.innerHTML = "";
+    PRESETS[currency].forEach(v => {
+      const b = document.createElement("button");
+      b.className = "preset";
+      b.textContent = symbol() + v.toLocaleString("en-US");
+      b.onclick = () => setSpend(v);
+      box.appendChild(b);
+    });
+  }
+  buildPresets();
+
+  function setCurrency(c) {
+    if (c === currency) return;
+    const rate = fxRate();
+    const cur = Math.max(0, parseFloat($("spend").value) || 0);
+    const converted = c === "RMB" ? cur * rate : cur / rate;
+    currency = c;
+    $("curUSD").classList.toggle("on", c === "USD");
+    $("curRMB").classList.toggle("on", c === "RMB");
+    $("curSym").textContent = symbol();
+    $("curUnit").textContent = c === "USD" ? "USD" : "RMB";
+    $("fxRow").style.display = c === "RMB" ? "flex" : "none";
+    $("spend").step = STEP[c];
+    $("spendRange").max = SLIDER_MAX[c];
+    $("spendRange").step = STEP[c];
+    $("spend").value = Math.round(converted);
+    $("spendRange").value = Math.min(SLIDER_MAX[c], Math.round(converted));
+    buildPresets();
+    render();
+  }
+  $("curUSD").addEventListener("click", () => setCurrency("USD"));
+  $("curRMB").addEventListener("click", () => setCurrency("RMB"));
 
   function tierOf(prog, sel) { return prog.tiers.find(t => t.key === sel.value); }
 
@@ -460,8 +538,10 @@
   }
 
   function render() {
-    const spend = Math.max(0, parseFloat($("spend").value) || 0);
+    const spend = spendUSD();
     const welcome = Math.max(0, parseFloat($("mWelcome").value) || 0);
+
+    $("convNote").textContent = currency === "RMB" && spend > 0 ? `≈ 消费 $${nf(spend, 2)}` : "";
 
     const m = compute(MARRIOTT, $("mTier"), spend, welcome);
     const h = compute(HYATT, $("hTier"), spend, 0);
@@ -498,13 +578,13 @@
 
   function setSpend(v) {
     $("spend").value = v;
-    $("spendRange").value = Math.min(2000, v);
+    $("spendRange").value = Math.min(SLIDER_MAX[currency], v);
     render();
   }
 
-  $("spend").addEventListener("input", () => { $("spendRange").value = Math.min(2000, parseFloat($("spend").value) || 0); render(); });
+  $("spend").addEventListener("input", () => { $("spendRange").value = Math.min(SLIDER_MAX[currency], parseFloat($("spend").value) || 0); render(); });
   $("spendRange").addEventListener("input", () => { $("spend").value = $("spendRange").value; render(); });
-  ["mTier", "hTier", "mWelcome"].forEach(id => $(id).addEventListener("input", render));
+  ["mTier", "hTier", "mWelcome", "fxRate"].forEach(id => $(id).addEventListener("input", render));
 
   // ---- theme toggle ----
   const tt = $("themeToggle");
