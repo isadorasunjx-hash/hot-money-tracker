@@ -308,6 +308,34 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* ---- points -> RMB quick converter ---- */
+  .sec-title {
+    font-size: 1.2rem; margin: 2.6rem 0 .2rem; letter-spacing: -.01em;
+  }
+  .sec-title span {
+    font-size: .68rem; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--brass); font-weight: 600; margin-left: .55rem;
+  }
+  .sec-sub { color: var(--ink-soft); font-size: .9rem; margin: 0 0 1rem; }
+  .pts-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.4rem;
+  }
+  .pts-cell {
+    border: 1px solid var(--line); border-left: 4px solid var(--accent);
+    border-radius: 11px; padding: .95rem 1.1rem;
+    display: flex; flex-direction: column; gap: .2rem; background: var(--accent-soft);
+  }
+  .pts-cell.marriott { --accent: var(--marriott); --accent-soft: var(--marriott-soft); }
+  .pts-cell.hyatt { --accent: var(--hyatt); --accent-soft: var(--hyatt-soft); }
+  .pts-name { font-weight: 700; font-size: .95rem; }
+  .pts-rate { font-size: .76rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .pts-val {
+    font-size: clamp(1.7rem, 5vw, 2rem); font-weight: 700; margin-top: .25rem;
+    font-variant-numeric: tabular-nums; display: flex; align-items: baseline;
+    gap: .2rem; color: var(--accent);
+  }
+  .pts-val .rmb { font-size: 1rem; color: var(--ink-faint); font-weight: 600; }
+
   /* ---- footnote ---- */
   .notes {
     margin-top: 2.2rem; font-size: .8rem; color: var(--ink-faint);
@@ -419,6 +447,31 @@
     </section>
   </div>
 
+  <h2 class="sec-title">积分价值速算 <span>Points → RMB</span></h2>
+  <p class="sec-sub">已经攒了多少积分？直接输入看它折合多少人民币。</p>
+  <div class="panel">
+    <div class="field">
+      <label for="pts">积分数量</label>
+      <div class="spend-input">
+        <input id="pts" type="number" min="0" step="100" value="10000" inputmode="numeric" aria-label="积分数量">
+        <span class="unit">积分</span>
+      </div>
+      <div class="presets" id="ptsPresets"></div>
+    </div>
+    <div class="pts-grid">
+      <div class="pts-cell marriott">
+        <span class="pts-name">万豪 Marriott</span>
+        <span class="pts-rate">1 积分 ≈ ¥0.05</span>
+        <span class="pts-val"><span class="rmb">¥</span><span id="ptsM">500</span></span>
+      </div>
+      <div class="pts-cell hyatt">
+        <span class="pts-name">凯悦 Hyatt</span>
+        <span class="pts-rate">1 积分 ≈ ¥0.12</span>
+        <span class="pts-val"><span class="rmb">¥</span><span id="ptsH">1,200</span></span>
+      </div>
+    </div>
+  </div>
+
   <div class="notes">
     <p><b>取值口径</b>　万豪：基础 10 分/美元；白金 +50% 奖励；1 分 ≈ ¥0.05。凯悦：基础 5 分/美元；环球客 +30% 奖励；1 分 ≈ ¥0.12。奖励仅作用于基础消费积分，欢迎积分为固定赠送、不加成。</p>
     <p>积分价值为估算参考，实际兑换价值随房型、旺季、转点渠道浮动，不构成任何消费建议。</p>
@@ -446,7 +499,7 @@
     tiers: [
       { key: "member",     label: "普通会员 Member",       bonus: 0.00 },
       { key: "discoverist",label: "探索客 Discoverist",    bonus: 0.10 },
-      { key: "explorist",  label: "远行客 Explorist",      bonus: 0.20 },
+      { key: "explorist",  label: "冒险家 Explorist",      bonus: 0.20 },
       { key: "globalist",  label: "环球客 Globalist",      bonus: 0.30 },
     ],
     defaultTier: "globalist",
@@ -454,6 +507,7 @@
 
   const $ = (id) => document.getElementById(id);
   const nf = (n, d = 0) => n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+  const money = (n) => n % 1 === 0 ? nf(n) : n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 
   // populate tier selects + presets
   function fillSelect(sel, prog) {
@@ -585,6 +639,22 @@
   $("spend").addEventListener("input", () => { $("spendRange").value = Math.min(SLIDER_MAX[currency], parseFloat($("spend").value) || 0); render(); });
   $("spendRange").addEventListener("input", () => { $("spend").value = $("spendRange").value; render(); });
   ["mTier", "hTier", "mWelcome", "fxRate"].forEach(id => $(id).addEventListener("input", render));
+
+  // ---- points -> RMB quick converter ----
+  [50, 1000, 10000, 50000].forEach(v => {
+    const b = document.createElement("button");
+    b.className = "preset";
+    b.textContent = v.toLocaleString("en-US");
+    b.onclick = () => { $("pts").value = v; renderPts(); };
+    $("ptsPresets").appendChild(b);
+  });
+  function renderPts() {
+    const p = Math.max(0, parseFloat($("pts").value) || 0);
+    $("ptsM").textContent = money(p * MARRIOTT.ptValue);
+    $("ptsH").textContent = money(p * HYATT.ptValue);
+  }
+  $("pts").addEventListener("input", renderPts);
+  renderPts();
 
   // ---- theme toggle ----
   const tt = $("themeToggle");
