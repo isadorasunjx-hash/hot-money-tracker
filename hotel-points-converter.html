@@ -1,0 +1,519 @@
+<title>酒店积分换算器 · Hotel Points Converter</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --paper: #f6f3ec;
+    --card: #ffffff;
+    --ink: #1a1c22;
+    --ink-soft: #565a66;
+    --ink-faint: #8a8e9a;
+    --line: #e4ded0;
+    --line-strong: #d3ccba;
+    --brass: #a9772f;
+    --brass-soft: #f0e3cd;
+    --marriott: #1f3f8f;
+    --marriott-soft: #e6ecf8;
+    --hyatt: #0e7361;
+    --hyatt-soft: #dcefe9;
+    --win: #147a4a;
+    --win-soft: #dcefe2;
+    --shadow: 0 1px 2px rgba(30,28,20,.05), 0 12px 32px -18px rgba(30,28,20,.28);
+    --radius: 14px;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Roboto, sans-serif;
+    --mono: "SF Mono", "JetBrains Mono", "Menlo", "Consolas", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #12151f;
+      --card: #1b1f2b;
+      --ink: #eef0f5;
+      --ink-soft: #a7adbc;
+      --ink-faint: #737a8b;
+      --line: #2a303e;
+      --line-strong: #363d4e;
+      --brass: #d5a75a;
+      --brass-soft: #33291a;
+      --marriott: #6f97e6;
+      --marriott-soft: #1c2740;
+      --hyatt: #4bc0a5;
+      --hyatt-soft: #123029;
+      --win: #4bbd7f;
+      --win-soft: #17301f;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 18px 40px -22px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --paper: #f6f3ec; --card: #ffffff; --ink: #1a1c22; --ink-soft: #565a66;
+    --ink-faint: #8a8e9a; --line: #e4ded0; --line-strong: #d3ccba;
+    --brass: #a9772f; --brass-soft: #f0e3cd;
+    --marriott: #1f3f8f; --marriott-soft: #e6ecf8;
+    --hyatt: #0e7361; --hyatt-soft: #dcefe9;
+    --win: #147a4a; --win-soft: #dcefe2;
+    --shadow: 0 1px 2px rgba(30,28,20,.05), 0 12px 32px -18px rgba(30,28,20,.28);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #12151f; --card: #1b1f2b; --ink: #eef0f5; --ink-soft: #a7adbc;
+    --ink-faint: #737a8b; --line: #2a303e; --line-strong: #363d4e;
+    --brass: #d5a75a; --brass-soft: #33291a;
+    --marriott: #6f97e6; --marriott-soft: #1c2740;
+    --hyatt: #4bc0a5; --hyatt-soft: #123029;
+    --win: #4bbd7f; --win-soft: #17301f;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 18px 40px -22px rgba(0,0,0,.7);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 940px;
+    margin: 0 auto;
+    padding: clamp(1.5rem, 4vw, 3.5rem) clamp(1rem, 3vw, 2rem) 4rem;
+  }
+
+  /* ---- masthead ---- */
+  .eyebrow {
+    font-size: .72rem;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--brass);
+    font-weight: 600;
+    margin: 0 0 .5rem;
+  }
+  h1 {
+    font-size: clamp(1.7rem, 4.5vw, 2.5rem);
+    line-height: 1.08;
+    margin: 0 0 .5rem;
+    letter-spacing: -.01em;
+    text-wrap: balance;
+  }
+  .lede {
+    color: var(--ink-soft);
+    max-width: 56ch;
+    margin: 0 0 2rem;
+    font-size: 1rem;
+  }
+
+  /* ---- control panel ---- */
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: clamp(1.1rem, 2.5vw, 1.6rem);
+    margin-bottom: 1.6rem;
+  }
+  .spend-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1.4rem;
+  }
+  .field { display: flex; flex-direction: column; gap: .45rem; }
+  .field label {
+    font-size: .72rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 600;
+  }
+  .spend-input {
+    display: flex;
+    align-items: baseline;
+    gap: .35rem;
+    border-bottom: 2px solid var(--line-strong);
+    padding-bottom: .3rem;
+  }
+  .spend-input .cur { font-size: 1.4rem; color: var(--ink-faint); font-weight: 600; }
+  .spend-input input {
+    border: none;
+    background: transparent;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: clamp(2rem, 6vw, 2.9rem);
+    font-weight: 700;
+    letter-spacing: -.02em;
+    width: 5.5ch;
+    padding: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .spend-input input:focus { outline: none; color: var(--brass); }
+  .spend-input .unit { font-size: .95rem; color: var(--ink-faint); }
+  .slider-wrap { flex: 1 1 220px; min-width: 200px; }
+  input[type="range"] { width: 100%; accent-color: var(--brass); margin-top: .6rem; cursor: pointer; }
+  .presets { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .55rem; }
+  .preset {
+    font: inherit;
+    font-size: .8rem;
+    padding: .25rem .6rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink-soft);
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+  }
+  .preset:hover { border-color: var(--brass); color: var(--brass); }
+
+  .tier-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem 1.4rem;
+    margin-top: 1.5rem;
+    padding-top: 1.4rem;
+    border-top: 1px dashed var(--line-strong);
+  }
+  select {
+    font: inherit;
+    font-size: .95rem;
+    padding: .5rem .7rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background: var(--paper);
+    color: var(--ink);
+    cursor: pointer;
+    width: 100%;
+  }
+  select:focus { outline: 2px solid var(--brass); outline-offset: 1px; }
+  .tier-head { display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem; }
+  .dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .tier-head .name { font-weight: 700; font-size: .95rem; }
+  .welcome-field { margin-top: .7rem; display: flex; flex-direction: column; gap: .35rem; }
+  .welcome-field label {
+    font-size: .68rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 600;
+  }
+  .welcome-field input {
+    font: inherit; font-size: .95rem; padding: .5rem .7rem;
+    border: 1px solid var(--line-strong); border-radius: 9px;
+    background: var(--paper); color: var(--ink); width: 100%;
+    font-variant-numeric: tabular-nums;
+  }
+  .welcome-field input:focus { outline: 2px solid var(--brass); outline-offset: 1px; }
+  .hint { font-size: .72rem; color: var(--ink-faint); margin-top: .2rem; }
+
+  /* ---- verdict strip ---- */
+  .verdict {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    background: var(--win-soft);
+    border: 1px solid color-mix(in srgb, var(--win) 30%, transparent);
+    color: var(--ink);
+    border-radius: var(--radius);
+    padding: .9rem 1.2rem;
+    margin-bottom: 1.6rem;
+    font-size: .98rem;
+  }
+  .verdict .tag {
+    font-size: .68rem; letter-spacing: .12em; text-transform: uppercase;
+    font-weight: 700; color: var(--win);
+    background: var(--card); padding: .25rem .55rem; border-radius: 999px; flex: none;
+  }
+  .verdict strong { font-variant-numeric: tabular-nums; }
+
+  /* ---- program cards ---- */
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-top: 4px solid var(--accent);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.3rem 1.4rem 1.5rem;
+    position: relative;
+  }
+  .card.marriott { --accent: var(--marriott); --accent-soft: var(--marriott-soft); }
+  .card.hyatt { --accent: var(--hyatt); --accent-soft: var(--hyatt-soft); }
+  .card.leader::after {
+    content: "最优";
+    position: absolute; top: 1rem; right: 1.1rem;
+    font-size: .64rem; letter-spacing: .12em; font-weight: 700;
+    color: var(--win); background: var(--win-soft);
+    padding: .2rem .5rem; border-radius: 999px;
+  }
+  .card-head { display: flex; align-items: center; gap: .6rem; margin-bottom: .3rem; }
+  .card-head .brand { font-size: 1.15rem; font-weight: 700; letter-spacing: -.01em; }
+  .card-tier { font-size: .78rem; color: var(--ink-soft); margin-bottom: 1.2rem; }
+  .card-tier b { color: var(--accent); }
+
+  .value {
+    font-size: clamp(2.2rem, 7vw, 3rem);
+    font-weight: 700;
+    letter-spacing: -.02em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    display: flex; align-items: baseline; gap: .3rem;
+  }
+  .value .rmb { font-size: 1.3rem; color: var(--ink-faint); font-weight: 600; }
+  .value-sub {
+    color: var(--ink-soft); font-size: .85rem; margin: .35rem 0 1.2rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .breakdown {
+    border-top: 1px solid var(--line);
+    padding-top: .9rem;
+    font-family: var(--mono);
+    font-size: .82rem;
+  }
+  .brow {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: .28rem 0; color: var(--ink-soft);
+  }
+  .brow .num { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .brow.total {
+    margin-top: .35rem; padding-top: .5rem;
+    border-top: 1px solid var(--line); color: var(--ink); font-weight: 600;
+  }
+  .brow.total .num { color: var(--accent); font-size: .95rem; }
+  .chip {
+    display: inline-block; margin-top: 1rem;
+    background: var(--accent-soft); color: var(--accent);
+    font-size: .75rem; font-weight: 600; padding: .3rem .65rem; border-radius: 999px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---- footnote ---- */
+  .notes {
+    margin-top: 2.2rem; font-size: .8rem; color: var(--ink-faint);
+    border-top: 1px solid var(--line); padding-top: 1.1rem; line-height: 1.7;
+  }
+  .notes b { color: var(--ink-soft); }
+  .theme-toggle {
+    position: fixed; top: 1rem; right: 1rem;
+    font: inherit; font-size: .8rem;
+    background: var(--card); color: var(--ink-soft);
+    border: 1px solid var(--line-strong); border-radius: 999px;
+    padding: .35rem .8rem; cursor: pointer; box-shadow: var(--shadow);
+  }
+  @media (max-width: 620px) {
+    .cards { grid-template-columns: 1fr; }
+    .tier-row { grid-template-columns: 1fr; }
+  }
+</style>
+
+<button class="theme-toggle" id="themeToggle" aria-label="切换主题">◐ 主题</button>
+
+<div class="wrap">
+  <p class="eyebrow">Loyalty Value Calculator</p>
+  <h1>酒店积分换算器</h1>
+  <p class="lede">输入一笔消费，实时对比万豪 Bonvoy 与凯悦 World of Hyatt 能拿到多少积分、折合多少人民币，以及哪家每一美元更值。</p>
+
+  <div class="panel">
+    <div class="spend-row">
+      <div class="field">
+        <label for="spend">消费金额</label>
+        <div class="spend-input">
+          <span class="cur">$</span>
+          <input id="spend" type="number" min="0" step="10" value="200" inputmode="decimal" aria-label="消费金额（美元）">
+          <span class="unit">USD</span>
+        </div>
+      </div>
+      <div class="slider-wrap">
+        <input id="spendRange" type="range" min="0" max="2000" step="10" value="200" aria-label="消费金额滑块">
+        <div class="presets" id="presets"></div>
+      </div>
+    </div>
+
+    <div class="tier-row">
+      <div>
+        <div class="tier-head">
+          <span class="dot" style="background:var(--marriott)"></span>
+          <span class="name">万豪 Marriott Bonvoy</span>
+        </div>
+        <div class="field">
+          <label for="mTier">会籍等级</label>
+          <select id="mTier" aria-label="万豪会籍等级"></select>
+        </div>
+        <div class="welcome-field">
+          <label for="mWelcome">欢迎积分（固定，不享奖励加成）</label>
+          <input id="mWelcome" type="number" min="0" step="100" value="0" inputmode="numeric">
+          <p class="hint">万丽 / 万怡 / 万豪等部分酒店入住即赠，直接叠加。</p>
+        </div>
+      </div>
+      <div>
+        <div class="tier-head">
+          <span class="dot" style="background:var(--hyatt)"></span>
+          <span class="name">凯悦 World of Hyatt</span>
+        </div>
+        <div class="field">
+          <label for="hTier">会籍等级</label>
+          <select id="hTier" aria-label="凯悦会籍等级"></select>
+        </div>
+        <p class="hint" style="margin-top:1.05rem">凯悦基础 5 分/美元，环球客额外 +30% 奖励。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="verdict" id="verdict">
+    <span class="tag">对比</span>
+    <span id="verdictText"></span>
+  </div>
+
+  <div class="cards">
+    <section class="card marriott" id="cardM">
+      <div class="card-head">
+        <span class="brand">万豪 Marriott</span>
+      </div>
+      <p class="card-tier" id="mTierLabel"></p>
+      <div class="value"><span class="rmb">¥</span><span id="mRmb">0</span></div>
+      <p class="value-sub" id="mPointsSub"></p>
+      <div class="breakdown" id="mBreakdown"></div>
+      <span class="chip" id="mPerDollar"></span>
+    </section>
+
+    <section class="card hyatt" id="cardH">
+      <div class="card-head">
+        <span class="brand">凯悦 Hyatt</span>
+      </div>
+      <p class="card-tier" id="hTierLabel"></p>
+      <div class="value"><span class="rmb">¥</span><span id="hRmb">0</span></div>
+      <p class="value-sub" id="hPointsSub"></p>
+      <div class="breakdown" id="hBreakdown"></div>
+      <span class="chip" id="hPerDollar"></span>
+    </section>
+  </div>
+
+  <div class="notes">
+    <p><b>取值口径</b>　万豪：基础 10 分/美元；白金 +50% 奖励；1 分 ≈ ¥0.05。凯悦：基础 5 分/美元；环球客 +30% 奖励；1 分 ≈ ¥0.12。奖励仅作用于基础消费积分，欢迎积分为固定赠送、不加成。</p>
+    <p>积分价值为估算参考，实际兑换价值随房型、旺季、转点渠道浮动，不构成任何消费建议。</p>
+  </div>
+</div>
+
+<script>
+  // ---- program definitions (faithful to the given data) ----
+  const MARRIOTT = {
+    base: 10,            // points per USD
+    ptValue: 0.05,       // RMB per point
+    tiers: [
+      { key: "member",     label: "普通会员 Member",       bonus: 0.00 },
+      { key: "silver",     label: "银卡 Silver Elite",     bonus: 0.10 },
+      { key: "gold",       label: "金卡 Gold Elite",       bonus: 0.25 },
+      { key: "platinum",   label: "白金 Platinum Elite",   bonus: 0.50 },
+      { key: "titanium",   label: "钛金 Titanium Elite",   bonus: 0.75 },
+      { key: "ambassador", label: "大使 Ambassador Elite", bonus: 0.75 },
+    ],
+    defaultTier: "platinum",
+  };
+  const HYATT = {
+    base: 5,
+    ptValue: 0.12,
+    tiers: [
+      { key: "member",     label: "普通会员 Member",       bonus: 0.00 },
+      { key: "discoverist",label: "探索客 Discoverist",    bonus: 0.10 },
+      { key: "explorist",  label: "远行客 Explorist",      bonus: 0.20 },
+      { key: "globalist",  label: "环球客 Globalist",      bonus: 0.30 },
+    ],
+    defaultTier: "globalist",
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const nf = (n, d = 0) => n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+
+  // populate tier selects + presets
+  function fillSelect(sel, prog) {
+    prog.tiers.forEach(t => {
+      const o = document.createElement("option");
+      o.value = t.key; o.textContent = t.label;
+      if (t.key === prog.defaultTier) o.selected = true;
+      sel.appendChild(o);
+    });
+  }
+  fillSelect($("mTier"), MARRIOTT);
+  fillSelect($("hTier"), HYATT);
+
+  [100, 200, 500, 1000].forEach(v => {
+    const b = document.createElement("button");
+    b.className = "preset"; b.textContent = "$" + v;
+    b.onclick = () => { setSpend(v); };
+    $("presets").appendChild(b);
+  });
+
+  function tierOf(prog, sel) { return prog.tiers.find(t => t.key === sel.value); }
+
+  function compute(prog, sel, spend, welcome = 0) {
+    const tier = tierOf(prog, sel);
+    const basePts = spend * prog.base;
+    const bonusPts = basePts * tier.bonus;
+    const total = basePts + bonusPts + welcome;
+    const rmb = total * prog.ptValue;
+    return { tier, basePts, bonusPts, welcome, total, rmb, perDollar: spend > 0 ? rmb / spend : 0 };
+  }
+
+  function breakdownHTML(r, prog) {
+    const rows = [
+      [`基础积分 ${prog.base}×$`, nf(r.basePts)],
+      [`奖励 +${Math.round(r.tier.bonus * 100)}%`, "+" + nf(r.bonusPts)],
+    ];
+    if (r.welcome > 0) rows.push([`欢迎积分`, "+" + nf(r.welcome)]);
+    let html = rows.map(([k, v]) => `<div class="brow"><span>${k}</span><span class="num">${v}</span></div>`).join("");
+    html += `<div class="brow total"><span>合计积分 × ¥${prog.ptValue}</span><span class="num">${nf(r.total)}</span></div>`;
+    return html;
+  }
+
+  function render() {
+    const spend = Math.max(0, parseFloat($("spend").value) || 0);
+    const welcome = Math.max(0, parseFloat($("mWelcome").value) || 0);
+
+    const m = compute(MARRIOTT, $("mTier"), spend, welcome);
+    const h = compute(HYATT, $("hTier"), spend, 0);
+
+    $("mRmb").textContent = nf(m.rmb, m.rmb % 1 ? 1 : 0);
+    $("hRmb").textContent = nf(h.rmb, h.rmb % 1 ? 1 : 0);
+    $("mPointsSub").textContent = `${nf(m.total)} 积分`;
+    $("hPointsSub").textContent = `${nf(h.total)} 积分`;
+    $("mTierLabel").innerHTML = `会籍 <b>${m.tier.label}</b>`;
+    $("hTierLabel").innerHTML = `会籍 <b>${h.tier.label}</b>`;
+    $("mBreakdown").innerHTML = breakdownHTML(m, MARRIOTT);
+    $("hBreakdown").innerHTML = breakdownHTML(h, HYATT);
+    $("mPerDollar").textContent = `每 $1 ≈ ¥${m.perDollar.toFixed(3)}`;
+    $("hPerDollar").textContent = `每 $1 ≈ ¥${h.perDollar.toFixed(3)}`;
+
+    // verdict + leader marker
+    $("cardM").classList.remove("leader");
+    $("cardH").classList.remove("leader");
+    const diff = m.rmb - h.rmb;
+    let text;
+    if (spend <= 0) {
+      text = "输入消费金额开始对比。";
+    } else if (Math.abs(diff) < 0.5) {
+      text = `两家几乎打平，各折合约 <strong>¥${nf(m.rmb, 1)}</strong>。`;
+    } else if (diff > 0) {
+      $("cardM").classList.add("leader");
+      text = `<strong>万豪</strong>更优，折合 <strong>¥${nf(m.rmb, m.rmb % 1 ? 1 : 0)}</strong>，比凯悦多 <strong>¥${nf(diff, 1)}</strong>。`;
+    } else {
+      $("cardH").classList.add("leader");
+      text = `<strong>凯悦</strong>更优，折合 <strong>¥${nf(h.rmb, h.rmb % 1 ? 1 : 0)}</strong>，比万豪多 <strong>¥${nf(-diff, 1)}</strong>。`;
+    }
+    $("verdictText").innerHTML = text;
+  }
+
+  function setSpend(v) {
+    $("spend").value = v;
+    $("spendRange").value = Math.min(2000, v);
+    render();
+  }
+
+  $("spend").addEventListener("input", () => { $("spendRange").value = Math.min(2000, parseFloat($("spend").value) || 0); render(); });
+  $("spendRange").addEventListener("input", () => { $("spend").value = $("spendRange").value; render(); });
+  ["mTier", "hTier", "mWelcome"].forEach(id => $(id).addEventListener("input", render));
+
+  // ---- theme toggle ----
+  const tt = $("themeToggle");
+  tt.addEventListener("click", () => {
+    const cur = document.documentElement.getAttribute("data-theme");
+    const next = cur === "dark" ? "light" : cur === "light" ? "dark"
+      : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "light" : "dark");
+    document.documentElement.setAttribute("data-theme", next);
+  });
+
+  render();
+</script>
