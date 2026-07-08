@@ -181,7 +181,7 @@
     font-variant-numeric: tabular-nums;
   }
   .fx input {
-    width: 4.5ch; font: inherit; font-size: .85rem; padding: 0 0 .1rem;
+    width: 5.5ch; font: inherit; font-size: .85rem; padding: 0 0 .1rem;
     border: none; border-bottom: 1px solid var(--line-strong);
     background: transparent; color: var(--ink); text-align: center;
     font-variant-numeric: tabular-nums;
@@ -205,15 +205,15 @@
     color: var(--ink); font-variant-numeric: tabular-nums;
   }
   .tax .rate input:focus { outline: none; border-bottom-color: var(--brass); color: var(--brass); }
-  .tax-presets { display: inline-flex; gap: .35rem; flex-wrap: wrap; }
-  .tax-presets button {
+  .tax-presets, .rate-presets { display: inline-flex; gap: .35rem; flex-wrap: wrap; }
+  .tax-presets button, .rate-presets button {
     font: inherit; font-size: .72rem; padding: .15rem .5rem;
     border: 1px solid var(--line-strong); border-radius: 999px;
     background: transparent; color: var(--ink-soft); cursor: pointer;
     font-variant-numeric: tabular-nums;
   }
-  .tax-presets button:hover { border-color: var(--brass); color: var(--brass); }
-  .tax-presets button.on { background: var(--brass); color: #fff; border-color: var(--brass); }
+  .tax-presets button:hover, .rate-presets button:hover { border-color: var(--brass); color: var(--brass); }
+  .tax-presets button.on, .rate-presets button.on { background: var(--brass); color: #fff; border-color: var(--brass); }
   .tax .tax-note { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 
   .tier-row {
@@ -405,7 +405,8 @@
           <span class="unit" id="curUnit">USD</span>
         </div>
         <div class="fx" id="fxRow" style="display:none">
-          汇率 $1 = ¥<input id="fxRate" type="number" min="0.1" step="0.05" value="7.20" inputmode="decimal" aria-label="美元兑人民币汇率">
+          汇率 $1 = ¥<input id="fxRate" type="number" min="0.1" step="0.01" value="7.47" inputmode="decimal" aria-label="美元兑人民币汇率">
+          <div class="rate-presets" id="fxPresets"></div>
           <span class="conv" id="convNote"></span>
         </div>
         <div class="tax">
@@ -414,7 +415,7 @@
             <button type="button" id="taxDeduct" class="on">扣税计分</button>
             <button type="button" id="taxKeep">不扣税</button>
           </div>
-          <span class="rate">税率 <input id="taxRate" type="number" min="0" max="40" step="0.1" value="16.6" inputmode="decimal" aria-label="税率百分比">%</span>
+          <span class="rate">税率 <input id="taxRate" type="number" min="0" max="40" step="0.1" value="6" inputmode="decimal" aria-label="税率百分比">%</span>
           <div class="tax-presets" id="taxPresets"></div>
           <span class="tax-note" id="taxNote"></span>
         </div>
@@ -618,6 +619,26 @@
   $("curUSD").addEventListener("click", () => setCurrency("USD"));
   $("curRMB").addEventListener("click", () => setCurrency("RMB"));
 
+  // quick-pick exchange rates: market vs Marriott's observed internal rate
+  const FX_PRESETS = [
+    { r: 7.2, label: "市场 7.2" },
+    { r: 7.47, label: "万豪实测 7.47" },
+  ];
+  FX_PRESETS.forEach(f => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.dataset.rate = f.r;
+    b.textContent = f.label;
+    b.onclick = () => { $("fxRate").value = f.r; render(); };
+    $("fxPresets").appendChild(b);
+  });
+  function syncFxPresets() {
+    const cur = parseFloat($("fxRate").value);
+    $("fxPresets").querySelectorAll("button").forEach(b => {
+      b.classList.toggle("on", parseFloat(b.dataset.rate) === cur);
+    });
+  }
+
   // quick-pick common tax rates (label, %)
   const TAX_PRESETS = [
     { r: 6, label: "中国 6%" },
@@ -683,6 +704,7 @@
     else if (deductTax) $("taxNote").textContent = `扣税 ${sym}${money(a.tax)} · 按税前 ${sym}${money(a.preTax)} 计积分`;
     else $("taxNote").textContent = `按全额 ${sym}${money(a.gross)} 计积分（含税 ${sym}${money(a.tax)} 未扣）`;
     syncTaxPresets();
+    syncFxPresets();
 
     const m = compute(MARRIOTT, $("mTier"), spend, welcome);
     const h = compute(HYATT, $("hTier"), spend, 0);
