@@ -205,6 +205,15 @@
     color: var(--ink); font-variant-numeric: tabular-nums;
   }
   .tax .rate input:focus { outline: none; border-bottom-color: var(--brass); color: var(--brass); }
+  .tax-presets { display: inline-flex; gap: .35rem; flex-wrap: wrap; }
+  .tax-presets button {
+    font: inherit; font-size: .72rem; padding: .15rem .5rem;
+    border: 1px solid var(--line-strong); border-radius: 999px;
+    background: transparent; color: var(--ink-soft); cursor: pointer;
+    font-variant-numeric: tabular-nums;
+  }
+  .tax-presets button:hover { border-color: var(--brass); color: var(--brass); }
+  .tax-presets button.on { background: var(--brass); color: #fff; border-color: var(--brass); }
   .tax .tax-note { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 
   .tier-row {
@@ -405,7 +414,8 @@
             <button type="button" id="taxDeduct" class="on">扣税计分</button>
             <button type="button" id="taxKeep">不扣税</button>
           </div>
-          <span class="rate">税率 <input id="taxRate" type="number" min="0" max="40" step="0.5" value="6" inputmode="decimal" aria-label="税率百分比">%</span>
+          <span class="rate">税率 <input id="taxRate" type="number" min="0" max="40" step="0.1" value="16.6" inputmode="decimal" aria-label="税率百分比">%</span>
+          <div class="tax-presets" id="taxPresets"></div>
           <span class="tax-note" id="taxNote"></span>
         </div>
       </div>
@@ -608,6 +618,27 @@
   $("curUSD").addEventListener("click", () => setCurrency("USD"));
   $("curRMB").addEventListener("click", () => setCurrency("RMB"));
 
+  // quick-pick common tax rates (label, %)
+  const TAX_PRESETS = [
+    { r: 6, label: "中国 6%" },
+    { r: 10, label: "10%" },
+    { r: 16.6, label: "本例 16.6%" },
+  ];
+  TAX_PRESETS.forEach(t => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.dataset.rate = t.r;
+    b.textContent = t.label;
+    b.onclick = () => { $("taxRate").value = t.r; render(); };
+    $("taxPresets").appendChild(b);
+  });
+  function syncTaxPresets() {
+    const cur = parseFloat($("taxRate").value);
+    $("taxPresets").querySelectorAll("button").forEach(b => {
+      b.classList.toggle("on", parseFloat(b.dataset.rate) === cur);
+    });
+  }
+
   function setDeduct(on) {
     deductTax = on;
     $("taxDeduct").classList.toggle("on", on);
@@ -651,6 +682,7 @@
     else if (taxRate() <= 0) $("taxNote").textContent = "税率 0 · 全额计积分";
     else if (deductTax) $("taxNote").textContent = `扣税 ${sym}${money(a.tax)} · 按税前 ${sym}${money(a.preTax)} 计积分`;
     else $("taxNote").textContent = `按全额 ${sym}${money(a.gross)} 计积分（含税 ${sym}${money(a.tax)} 未扣）`;
+    syncTaxPresets();
 
     const m = compute(MARRIOTT, $("mTier"), spend, welcome);
     const h = compute(HYATT, $("hTier"), spend, 0);
