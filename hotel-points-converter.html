@@ -188,6 +188,8 @@
   }
   .fx input:focus { outline: none; border-bottom-color: var(--brass); color: var(--brass); }
   .fx .conv { color: var(--ink-soft); }
+  .fx-pair { display: inline-flex; align-items: center; gap: .25rem; }
+  .fx-dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
 
   .seg.sm button { font-size: .74rem; padding: .22rem .62rem; }
   .tax {
@@ -405,8 +407,9 @@
           <span class="unit" id="curUnit">USD</span>
         </div>
         <div class="fx" id="fxRow" style="display:none">
-          汇率 $1 = ¥<input id="fxRate" type="number" min="0.1" step="0.01" value="7.47" inputmode="decimal" aria-label="美元兑人民币汇率">
-          <div class="rate-presets" id="fxPresets"></div>
+          <span class="rate-label">内部汇率 $1 =</span>
+          <span class="fx-pair"><i class="fx-dot" style="background:var(--marriott)"></i>万豪 ¥<input id="fxMarriott" type="number" min="0.1" step="0.01" value="7.47" inputmode="decimal" aria-label="万豪美元兑人民币汇率"></span>
+          <span class="fx-pair"><i class="fx-dot" style="background:var(--hyatt)"></i>凯悦 ¥<input id="fxHyatt" type="number" min="0.1" step="0.01" value="7.47" inputmode="decimal" aria-label="凯悦美元兑人民币汇率"></span>
           <span class="conv" id="convNote"></span>
         </div>
         <div class="tax">
@@ -513,6 +516,7 @@
   <div class="notes">
     <p><b>取值口径</b>　万豪：基础 10 分/美元；白金 +50% 奖励；1 分 ≈ ¥0.05。凯悦：基础 5 分/美元；环球客 +30% 奖励；1 分 ≈ ¥0.12。奖励仅作用于基础消费积分，欢迎积分为固定赠送、不加成。</p>
     <p><b>关于税</b>　金额按<b>含税总价</b>输入。「扣税计分」先剥离税额、只按税前房费累积（酒店积分通常只算税前，税费与服务费不计分）；「不扣税」则按全额计分。默认税率 6%——按财税〔2016〕36 号，中国住宿服务一般纳税人（年销售额 &gt; 500 万）增值税 6%，小规模纳税人 3%；境外城市税 / 度假费常见 10%–20%+，可自行调整。</p>
+    <p><b>关于汇率</b>　按人民币输入时，两家各用自己的内部结算汇率把税前房费折成美元再计分。万豪默认 7.47（真实账单反推，比市场 ~7.2 略高）；凯悦默认暂用 7.47（尚无人民币账单校准，可自行调整）。两个汇率框可分别设置。</p>
     <p>积分价值为估算参考，实际兑换价值随房型、旺季、转点渠道浮动，不构成任何消费建议。</p>
   </div>
 </div>
@@ -567,22 +571,25 @@
   const SLIDER_MAX = { USD: 2000, RMB: 15000 };
   const STEP = { USD: 10, RMB: 100 };
 
-  const fxRate = () => Math.max(0.1, parseFloat($("fxRate").value) || 7.2);
+  // each program uses its own internal USD->RMB rate (calibrated separately)
+  const fxMarriott = () => Math.max(0.1, parseFloat($("fxMarriott").value) || 7.47);
+  const fxHyatt = () => Math.max(0.1, parseFloat($("fxHyatt").value) || 7.47);
   const symbol = () => (currency === "USD" ? "$" : "¥");
   const taxRate = () => Math.max(0, (parseFloat($("taxRate").value) || 0) / 100);
 
-  // Input is a tax-inclusive price. Points accrue on the pre-tax room rate,
-  // so "扣税计分" earns on gross/(1+rate); "不扣税" earns on the full amount.
+  // Amounts in the entered currency. Input is a tax-inclusive price; points
+  // accrue on the pre-tax room rate, so "扣税计分" uses gross/(1+rate) and
+  // "不扣税" uses the full amount.
   function amounts() {
     const gross = Math.max(0, parseFloat($("spend").value) || 0);
     const t = taxRate();
-    const toUSD = currency === "USD" ? 1 : 1 / fxRate();
     const preTax = t > 0 ? gross / (1 + t) : gross;
     const tax = gross - preTax;
     const taxable = deductTax ? preTax : gross;
-    return { gross, preTax, tax, taxable, grossUSD: gross * toUSD, taxableUSD: taxable * toUSD };
+    return { gross, preTax, tax, taxable };
   }
-  const spendUSD = () => amounts().taxableUSD;
+  // qualifying USD for a program: apply its own FX only when input is RMB
+  const usdFor = (fx) => currency === "USD" ? amounts().taxable : amounts().taxable / fx;
 
   function buildPresets() {
     const box = $("presets");
@@ -599,7 +606,7 @@
 
   function setCurrency(c) {
     if (c === currency) return;
-    const rate = fxRate();
+    const rate = fxMarriott();
     const cur = Math.max(0, parseFloat($("spend").value) || 0);
     const converted = c === "RMB" ? cur * rate : cur / rate;
     currency = c;
@@ -618,26 +625,6 @@
   }
   $("curUSD").addEventListener("click", () => setCurrency("USD"));
   $("curRMB").addEventListener("click", () => setCurrency("RMB"));
-
-  // quick-pick exchange rates: market vs Marriott's observed internal rate
-  const FX_PRESETS = [
-    { r: 7.2, label: "市场 7.2" },
-    { r: 7.47, label: "万豪实测 7.47" },
-  ];
-  FX_PRESETS.forEach(f => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.dataset.rate = f.r;
-    b.textContent = f.label;
-    b.onclick = () => { $("fxRate").value = f.r; render(); };
-    $("fxPresets").appendChild(b);
-  });
-  function syncFxPresets() {
-    const cur = parseFloat($("fxRate").value);
-    $("fxPresets").querySelectorAll("button").forEach(b => {
-      b.classList.toggle("on", parseFloat(b.dataset.rate) === cur);
-    });
-  }
 
   // quick-pick common tax rates (label, %)
   const TAX_PRESETS = [
@@ -694,20 +681,21 @@
 
   function render() {
     const a = amounts();
-    const spend = a.taxableUSD;
+    const usdM = usdFor(fxMarriott());
+    const usdH = usdFor(fxHyatt());
     const welcome = Math.max(0, parseFloat($("mWelcome").value) || 0);
     const sym = symbol();
 
-    $("convNote").textContent = currency === "RMB" && a.gross > 0 ? `≈ $${money(a.grossUSD)}` : "";
+    $("convNote").textContent = currency === "RMB" && a.gross > 0
+      ? `→ 计积分 万豪 $${money(usdM)} · 凯悦 $${money(usdH)}` : "";
     if (a.gross <= 0) $("taxNote").textContent = "";
     else if (taxRate() <= 0) $("taxNote").textContent = "税率 0 · 全额计积分";
     else if (deductTax) $("taxNote").textContent = `扣税 ${sym}${money(a.tax)} · 按税前 ${sym}${money(a.preTax)} 计积分`;
     else $("taxNote").textContent = `按全额 ${sym}${money(a.gross)} 计积分（含税 ${sym}${money(a.tax)} 未扣）`;
     syncTaxPresets();
-    syncFxPresets();
 
-    const m = compute(MARRIOTT, $("mTier"), spend, welcome);
-    const h = compute(HYATT, $("hTier"), spend, 0);
+    const m = compute(MARRIOTT, $("mTier"), usdM, welcome);
+    const h = compute(HYATT, $("hTier"), usdH, 0);
 
     $("mRmb").textContent = nf(m.rmb, m.rmb % 1 ? 1 : 0);
     $("hRmb").textContent = nf(h.rmb, h.rmb % 1 ? 1 : 0);
@@ -725,7 +713,7 @@
     $("cardH").classList.remove("leader");
     const diff = m.rmb - h.rmb;
     let text;
-    if (spend <= 0) {
+    if (a.gross <= 0) {
       text = "输入消费金额开始对比。";
     } else if (Math.abs(diff) < 0.5) {
       text = `两家几乎打平，各折合约 <strong>¥${nf(m.rmb, 1)}</strong>。`;
@@ -747,7 +735,7 @@
 
   $("spend").addEventListener("input", () => { $("spendRange").value = Math.min(SLIDER_MAX[currency], parseFloat($("spend").value) || 0); render(); });
   $("spendRange").addEventListener("input", () => { $("spend").value = $("spendRange").value; render(); });
-  ["mTier", "hTier", "mWelcome", "fxRate"].forEach(id => $(id).addEventListener("input", render));
+  ["mTier", "hTier", "mWelcome", "fxMarriott", "fxHyatt"].forEach(id => $(id).addEventListener("input", render));
 
   // ---- points -> RMB quick converter ----
   [50, 1000, 10000, 50000].forEach(v => {
