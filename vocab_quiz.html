@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>跟读背单词 + 测验 · Vocab Quiz</title>
+<title>跟读背单词 · 脑洞部长</title>
 <style>
   :root {
     --bg: #0f1226;
@@ -26,37 +26,44 @@
                 var(--bg);
     color: var(--text);
     min-height: 100vh;
-    padding: 22px 16px 60px;
+    padding: 20px 16px 60px;
   }
   .wrap { max-width: 760px; margin: 0 auto; }
-  header h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: .5px; }
-  header p { color: var(--muted); margin: 0 0 16px; font-size: 14px; }
+  header h1 { font-size: 23px; margin: 0 0 4px; letter-spacing: .5px; }
+  header p { color: var(--muted); margin: 0 0 16px; font-size: 13px; }
 
-  .tabs { display:flex; gap: 8px; margin-bottom: 18px; }
+  .tabs { display:flex; gap: 8px; margin-bottom: 14px; }
   .tab {
     flex: 1 1 0; text-align:center; cursor:pointer;
-    padding: 11px 8px; border-radius: 11px; font-weight: 600; font-size: 15px;
+    padding: 12px 8px; border-radius: 12px; font-weight: 700; font-size: 15px;
     background: var(--card-2); color: var(--muted);
     border: 1px solid rgba(255,255,255,.08);
   }
   .tab.active { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #0c1030; border-color: transparent; }
 
+  /* shared voice bar */
+  .voicebar {
+    display:flex; gap: 14px; flex-wrap: wrap; align-items: center;
+    background: var(--card); border: 1px solid rgba(255,255,255,.06);
+    border-radius: 12px; padding: 10px 14px; margin-bottom: 16px;
+  }
+  .field { display:flex; align-items:center; gap: 8px; color: var(--muted); font-size: 13px; }
+  select, input[type=range], input[type=text] { accent-color: var(--accent); }
+  select { background: #0c1030; color: var(--text); border: 1px solid rgba(255,255,255,.12); border-radius: 9px; padding: 7px 9px; font-size: 13px; }
+
   .panel {
     background: var(--card);
     border: 1px solid rgba(255,255,255,.06);
-    border-radius: 16px;
-    padding: 18px;
-    box-shadow: var(--shadow);
-    margin-bottom: 18px;
+    border-radius: 16px; padding: 18px; box-shadow: var(--shadow); margin-bottom: 16px;
   }
   label.small { display:block; color: var(--muted); font-size: 13px; margin-bottom: 8px; }
-  textarea {
-    width: 100%; min-height: 84px; resize: vertical;
-    background: #0c1030; color: var(--text);
+  textarea, input.text {
+    width: 100%; background: #0c1030; color: var(--text);
     border: 1px solid rgba(255,255,255,.1); border-radius: 12px;
     padding: 12px 14px; font-size: 15px; line-height: 1.5; outline: none;
   }
-  textarea:focus { border-color: var(--accent); }
+  textarea { min-height: 80px; resize: vertical; }
+  textarea:focus, input.text:focus { border-color: var(--accent); }
   .row { display:flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
   .grow { flex: 1 1 auto; }
 
@@ -71,230 +78,269 @@
   button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
   button.ghost { background: var(--card-2); color: var(--text); border: 1px solid rgba(255,255,255,.1); }
   button.danger { background: transparent; color: var(--danger); border: 1px solid rgba(255,107,129,.4); }
+  button.sm { padding: 8px 12px; font-size: 13px; }
 
-  .controls { display:flex; gap: 14px; flex-wrap: wrap; align-items: center; }
-  .field { display:flex; align-items:center; gap: 8px; color: var(--muted); font-size: 13px; }
-  select, input[type=range] { accent-color: var(--accent); }
-  select { background: #0c1030; color: var(--text); border: 1px solid rgba(255,255,255,.12); border-radius: 9px; padding: 7px 9px; font-size: 13px; }
+  /* deck cards */
+  .deck {
+    background: var(--card); border: 1px solid rgba(255,255,255,.08);
+    border-radius: 16px; padding: 18px; margin-bottom: 14px; box-shadow: var(--shadow);
+    display:flex; align-items:center; gap: 14px; cursor: pointer;
+    transition: border-color .15s ease, transform .06s ease;
+  }
+  .deck:hover { border-color: var(--accent); }
+  .deck:active { transform: translateY(1px); }
+  .deck .dico { flex:0 0 auto; width:52px; height:52px; border-radius:14px;
+    display:flex; align-items:center; justify-content:center; font-size:26px;
+    background: linear-gradient(135deg, rgba(108,140,255,.25), rgba(84,224,199,.25)); }
+  .deck .dbody { flex:1 1 auto; min-width:0; }
+  .deck .dname { font-size: 17px; font-weight: 700; }
+  .deck .dmeta { color: var(--muted); font-size: 13px; margin-top: 3px; }
+  .deck .darrow { flex:0 0 auto; color: var(--muted); font-size: 20px; }
+
+  .backbar { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .backbar h2 { font-size: 19px; margin:0; flex:1 1 auto; }
+  .back { background: var(--card-2); color: var(--text); border:1px solid rgba(255,255,255,.1); }
 
   ul.list { list-style: none; margin: 0; padding: 0; }
   li.item {
     background: var(--card-2); border: 1px solid rgba(255,255,255,.06);
     border-radius: 14px; padding: 13px 15px; margin-bottom: 11px;
-    display: flex; align-items: center; gap: 13px;
-    transition: border-color .15s ease;
+    display: flex; align-items: center; gap: 13px; transition: border-color .15s ease;
   }
   li.item.speaking { border-color: var(--accent-2); box-shadow: 0 0 0 2px rgba(84,224,199,.25) inset; }
   .idx { flex:0 0 auto; width: 22px; text-align:right; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
   .play { flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%; display:flex; align-items:center; justify-content:center; font-size: 17px; padding: 0; }
   .cbody { flex: 1 1 auto; min-width: 0; }
-  .en { font-size: 18px; font-weight: 600; word-break: break-word; }
+  .en { font-size: 17px; font-weight: 600; word-break: break-word; }
   .zh { color: var(--accent-2); font-size: 14px; margin-top: 3px; }
   .rm { flex: 0 0 auto; background: transparent; color: var(--muted); border: none; font-size: 18px; padding: 6px; }
   .rm:hover { color: var(--danger); }
-  .empty { color: var(--muted); text-align:center; padding: 22px 0; font-size: 14px; }
+  .empty { color: var(--muted); text-align:center; padding: 26px 14px; font-size: 14px; line-height:1.7; }
+
+  /* sentence cards read vertically */
+  li.sent { display:block; padding: 15px 16px; }
+  li.sent .stop { display:flex; align-items:flex-start; gap:12px; }
+  li.sent .stext { flex:1 1 auto; font-size: 17px; line-height: 1.55; word-break: break-word; }
+  li.sent .szh { color: var(--accent-2); font-size: 14px; margin-top: 8px; line-height:1.5; }
 
   /* quiz */
-  .quizTop { display:flex; justify-content: space-between; align-items:center; color: var(--muted); font-size: 14px; margin-bottom: 4px; }
+  .quizTop { display:flex; justify-content: space-between; align-items:center; color: var(--muted); font-size: 14px; }
   .bar { height: 6px; border-radius: 4px; background: #0c1030; overflow: hidden; margin: 10px 0 22px; }
   .bar > i { display:block; height:100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); width: 0; transition: width .3s ease; }
-  .qword { text-align:center; margin: 6px 0 4px; }
-  .qword .w { font-size: 34px; font-weight: 700; word-break: break-word; }
-  .qword .sub { color: var(--muted); font-size: 13px; margin-top: 6px; }
-  .qspeak { display:block; margin: 14px auto 22px; }
-  .opts { display:grid; gap: 12px; }
-  .opt {
-    text-align:left; background: var(--card-2); color: var(--text);
-    border: 1px solid rgba(255,255,255,.1); border-radius: 12px;
-    padding: 15px 16px; font-size: 16px; font-weight: 500;
-    display:flex; align-items:center; gap: 10px;
-  }
-  .opt .key { flex:0 0 auto; width: 24px; height: 24px; border-radius:6px; background:#0c1030; color:var(--muted); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; }
-  .opt.correct { border-color: var(--ok); background: rgba(74,217,145,.14); color: #eafff4; }
-  .opt.wrong { border-color: var(--danger); background: rgba(255,107,129,.12); color: #ffe9ed; }
-  .opt:disabled { cursor: default; }
-  .feedback { text-align:center; min-height: 24px; margin-top: 18px; font-size: 15px; font-weight:600; }
+  .qprompt { text-align:center; margin: 4px 0 6px; }
+  .qprompt .plabel { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+  .qprompt .pword { font-size: 32px; font-weight: 800; word-break: break-word; }
+  .qprompt .pword.zh { color: var(--accent-2); font-size: 26px; }
+  .qspeak { display:block; margin: 12px auto 4px; }
+  .qanswer { font-size: 18px; text-align:center; }
+  .feedback { text-align:center; min-height: 24px; margin-top: 14px; font-size: 15px; font-weight:600; }
   .feedback.ok { color: var(--ok); }
   .feedback.no { color: var(--danger); }
+  .correctAns { text-align:center; font-size: 16px; margin-top:6px; }
+  .correctAns b { color: var(--accent-2); }
+
   .result { text-align:center; padding: 10px 0; }
   .result .score { font-size: 46px; font-weight: 800; margin: 8px 0; }
-  .result .msg { color: var(--muted); margin-bottom: 20px; }
+  .result .msg { color: var(--muted); margin-bottom: 12px; }
   .wrongList { text-align:left; margin-top: 10px; }
-  .wrongList .wl { display:flex; justify-content:space-between; gap:12px; padding:10px 12px; background:var(--card-2); border-radius:10px; margin-bottom:8px; }
+  .wrongList .wl { display:flex; justify-content:space-between; gap:12px; padding:10px 12px; background:var(--card-2); border-radius:10px; margin-bottom:8px; cursor:pointer; }
   .wrongList .wl b { font-weight:600; }
   .wrongList .wl span { color: var(--accent-2); }
+
+  .seg { display:inline-flex; background:#0c1030; border-radius:10px; padding:3px; gap:3px; }
+  .seg button { background:transparent; color:var(--muted); font-weight:600; padding:7px 12px; border-radius:8px; }
+  .seg button.on { background: var(--accent); color:#0c1030; }
+
   .hidden { display:none !important; }
   footer { color: var(--muted); font-size: 12px; text-align:center; margin-top: 8px; }
-  .hint { color: var(--muted); font-size: 12px; margin-top: 8px; }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 8px; line-height:1.6; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>📖 跟读背单词 + 测验</h1>
-    <p>「单词表」点 ▶ 朗读、看中文；「测验」听发音选中文意思。</p>
+    <h1>📖 脑洞部长 · 背单词</h1>
+    <p>单词分组学习 + 打字测验；句子跟读练长句。</p>
   </header>
 
   <div class="tabs">
-    <div class="tab active" data-tab="learn">📖 单词表</div>
-    <div class="tab" data-tab="quiz">📝 测验</div>
+    <div class="tab active" data-view="words">📖 单词</div>
+    <div class="tab" data-view="sentences">🗣 句子跟读</div>
   </div>
 
-  <!-- ===== LEARN ===== -->
-  <div id="tab-learn">
-    <section class="panel">
-      <label class="small" for="input">输入英文单词 / 句子（每行一个）</label>
-      <textarea id="input" placeholder="apple&#10;How are you?&#10;perseverance"></textarea>
+  <div class="voicebar">
+    <div class="field">🗣 语音 <select id="voiceSel"><option>加载中…</option></select></div>
+    <div class="field">⚡ 语速 <span id="rateVal">1.0</span>
+      <input id="rate" type="range" min="0.5" max="1.5" step="0.1" value="1" style="width:110px" /></div>
+  </div>
+
+  <!-- ================= WORDS ================= -->
+  <div id="view-words">
+    <!-- deck list -->
+    <div id="deckList"></div>
+    <div class="panel" id="newDeckPanel">
+      <label class="small">➕ 新建一个单词分组</label>
+      <div class="row" style="margin-top:0">
+        <input class="text grow" id="newDeckName" type="text" placeholder="分组名称，例如：脑洞部长32天内容" />
+        <button id="newDeckBtn">创建</button>
+      </div>
+    </div>
+
+    <!-- deck detail -->
+    <div id="deckDetail" class="hidden">
+      <div class="backbar">
+        <button class="back sm" id="deckBack">← 返回</button>
+        <h2 id="deckTitle">分组</h2>
+        <button class="sm" id="deckQuizBtn">📝 测验</button>
+      </div>
+
+      <ul id="wordList" class="list"></ul>
+      <div id="wordEmpty" class="empty hidden">这个分组还没有单词，在下面添加吧～</div>
+
+      <div class="panel">
+        <label class="small" for="wordInput">➕ 添加单词（每行一个；可写「英文 = 中文」直接指定意思）</label>
+        <textarea id="wordInput" placeholder="apple = 苹果&#10;perseverance&#10;take back = 收回"></textarea>
+        <div class="row">
+          <button id="addWordBtn" class="grow">添加到本分组</button>
+          <button id="readDeckBtn" class="ghost">🔊 全部跟读</button>
+          <button id="stopBtn1" class="ghost">⏹ 停止</button>
+        </div>
+        <div class="hint">不写中文时会尝试自动翻译（需联网）。手机第一次朗读，可能要先轻触一下页面。</div>
+      </div>
       <div class="row">
-        <button id="addBtn" class="grow">➕ 添加到列表</button>
-        <button id="readAllBtn" class="ghost">🔊 全部跟读</button>
-        <button id="stopBtn" class="ghost">⏹ 停止</button>
+        <button class="danger sm" id="deleteDeckBtn" style="margin-left:auto">🗑 删除此分组</button>
       </div>
-      <div class="hint">提示：手机上第一次点朗读，可能要先轻触一下页面才有声音。</div>
-    </section>
+    </div>
 
-    <section class="panel">
-      <div class="controls">
-        <div class="field">🗣 语音 <select id="voiceSel"><option>加载中…</option></select></div>
-        <div class="field">⚡ 语速 <span id="rateVal">1.0</span>
-          <input id="rate" type="range" min="0.5" max="1.5" step="0.1" value="1" /></div>
-        <button id="clearBtn" class="danger" style="margin-left:auto">清空列表</button>
+    <!-- quiz -->
+    <div id="quizView" class="hidden">
+      <div class="backbar">
+        <button class="back sm" id="quizBack">← 返回</button>
+        <h2 id="quizTitle">测验</h2>
       </div>
-    </section>
 
-    <ul id="list" class="list"></ul>
-    <div id="empty" class="empty">还没有单词，先在上方输入并添加吧～</div>
+      <div class="panel" id="quizSetup">
+        <label class="small">出题方向</label>
+        <div class="seg" id="dirSeg">
+          <button data-dir="en2zh" class="on">看英文 → 打中文</button>
+          <button data-dir="zh2en">看中文 → 打英文</button>
+          <button data-dir="mix">混合</button>
+        </div>
+        <div class="row" style="margin-top:16px">
+          <div class="field">题量
+            <select id="qCount"><option value="10">10 题</option><option value="20">20 题</option><option value="0">全部</option></select>
+          </div>
+          <label class="field" style="cursor:pointer"><input type="checkbox" id="qAutoSpeak" checked /> 出英文时自动朗读</label>
+        </div>
+        <div class="row"><button id="startQuizBtn" class="grow">🚀 开始测验</button></div>
+        <div class="hint" id="quizAvail"></div>
+      </div>
+
+      <div class="panel hidden" id="quizPlay">
+        <div class="quizTop"><span id="qProgress">第 1 / 10 题</span><span id="qScore">✅ 0</span></div>
+        <div class="bar"><i id="qBar"></i></div>
+        <div class="qprompt">
+          <div class="plabel" id="qLabel">请输入中文意思</div>
+          <div class="pword" id="qWord">word</div>
+        </div>
+        <button class="ghost qspeak hidden" id="qSpeakBtn">🔊 再听一次</button>
+        <div class="row" style="margin-top:6px">
+          <input class="text grow qanswer" id="qInput" type="text" autocomplete="off" autocapitalize="off" placeholder="在这里输入答案…" />
+          <button id="qSubmitBtn">提交</button>
+        </div>
+        <div class="feedback" id="qFeedback"></div>
+        <div class="correctAns hidden" id="qCorrect"></div>
+        <div class="row hidden" id="qGradeRow" style="justify-content:center">
+          <button class="ghost sm" id="markRight">✅ 算我对</button>
+          <button class="ghost sm" id="markWrong">❌ 记错了</button>
+        </div>
+        <div class="row hidden" id="qNextRow"><button id="qNextBtn" class="grow">下一题 →</button></div>
+      </div>
+
+      <div class="panel hidden" id="quizResult">
+        <div class="result">
+          <div class="msg" id="rMsg">测验完成！</div>
+          <div class="score" id="rScore">0 / 0</div>
+          <div id="rWrong" class="wrongList"></div>
+          <div class="row" style="margin-top:18px">
+            <button id="againBtn" class="grow">🔁 再测一次</button>
+            <button id="backToDeckBtn" class="ghost">📖 回单词表</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- ===== QUIZ ===== -->
-  <div id="tab-quiz" class="hidden">
-    <section class="panel" id="quizStart">
-      <div style="font-size:15px; margin-bottom:14px;">听发音（或看单词），从 4 个选项里选出正确的中文意思。</div>
-      <div class="controls">
-        <div class="field">题量
-          <select id="qCount">
-            <option value="10">10 题</option>
-            <option value="20">20 题</option>
-            <option value="0">全部</option>
-          </select>
-        </div>
-        <div class="field">
-          <label class="field" style="cursor:pointer"><input type="checkbox" id="qAutoSpeak" checked /> 出题自动朗读</label>
-        </div>
-      </div>
-      <div class="row"><button id="startQuizBtn" class="grow">🚀 开始测验</button></div>
-      <div class="hint" id="quizAvail"></div>
-    </section>
+  <!-- ================= SENTENCES ================= -->
+  <div id="view-sentences" class="hidden">
+    <ul id="sentList" class="list"></ul>
+    <div id="sentEmpty" class="empty">
+      还没有句子。<br />把要练的长句发给我，我帮你加进来；<br />或在下面自己粘贴（每行一句）。
+    </div>
 
-    <section class="panel hidden" id="quizPlay">
-      <div class="quizTop"><span id="qProgress">第 1 / 10 题</span><span id="qScore">✅ 0</span></div>
-      <div class="bar"><i id="qBar"></i></div>
-      <div class="qword">
-        <div class="w" id="qWord">word</div>
-        <div class="sub">👇 选出它的中文意思</div>
+    <div class="panel">
+      <label class="small" for="sentInput">➕ 添加句子（每行一句；可写「英文 = 中文」附带翻译）</label>
+      <textarea id="sentInput" placeholder="I couldn't agree with you more. = 我完全同意你。&#10;It's not that I don't want to, it's that I can't."></textarea>
+      <div class="row">
+        <button id="addSentBtn" class="grow">添加句子</button>
+        <button id="readSentsBtn" class="ghost">🔊 全部跟读</button>
+        <button id="stopBtn2" class="ghost">⏹ 停止</button>
       </div>
-      <button class="ghost qspeak" id="qSpeakBtn">🔊 再听一次</button>
-      <div class="opts" id="qOpts"></div>
-      <div class="feedback" id="qFeedback"></div>
-      <div class="row hidden" id="qNextRow"><button id="qNextBtn" class="grow">下一题 →</button></div>
-    </section>
-
-    <section class="panel hidden" id="quizResult">
-      <div class="result">
-        <div class="msg" id="rMsg">测验完成！</div>
-        <div class="score" id="rScore">0 / 0</div>
-        <div id="rWrong" class="wrongList"></div>
-        <div class="row" style="margin-top:18px;">
-          <button id="againBtn" class="grow">🔁 再测一次</button>
-          <button id="reviewBtn" class="ghost">📖 回单词表</button>
-        </div>
-      </div>
-    </section>
+      <div class="hint">句子较长，点每句前的 ▶ 单独朗读跟读最方便。</div>
+    </div>
   </div>
 
-  <footer>本地运行 · 浏览器语音合成 (Web Speech API) · 词表保存在本地浏览器</footer>
+  <footer>脑洞部长 · 背单词 · 浏览器语音合成 (Web Speech API) · 数据保存在本地浏览器</footer>
 </div>
 
 <script>
 const $ = (s) => document.querySelector(s);
-const STORE_KEY = "word-reader-items-v1";
+const STORE = "vocab-app-v2";
 
 const PRESET = [
-  { en: "veto", zh: "否决（权）" },
-  { en: "dumb", zh: "哑的；愚蠢的" },
-  { en: "retract", zh: "收回；撤回" },
-  { en: "take back", zh: "收回（说过的话）" },
-  { en: "fair", zh: "公平的；公正的" },
-  { en: "hiring decision", zh: "招聘决定" },
-  { en: "I hate to...but", zh: "我很不愿意…但是" },
-  { en: "Name one", zh: "说一个（举个例子）" },
-  { en: "ginger", zh: "姜；姜黄色（头发）" },
-  { en: "ginger ale", zh: "姜汁汽水" },
-  { en: "lemon", zh: "柠檬" },
-  { en: "ginger cat", zh: "橘猫" },
-  { en: "upset", zh: "不安的；使心烦" },
-  { en: "photographer", zh: "摄影师" },
-  { en: "photography", zh: "摄影（术）" },
-  { en: "photograph", zh: "照片" },
-  { en: "family portrait", zh: "全家福" },
-  { en: "book the photographer", zh: "预约摄影师" },
-  { en: "pimple", zh: "痘痘；青春痘" },
-  { en: "straw", zh: "吸管；稻草" },
-  { en: "strawberry", zh: "草莓" },
-  { en: "blueberry", zh: "蓝莓" },
-  { en: "draw straws", zh: "抽签（决定）" },
-  { en: "bartender", zh: "酒保；调酒师" },
-  { en: "gold", zh: "金；金色" },
-  { en: "suggest", zh: "建议；提议" },
-  { en: "cherry", zh: "樱桃" },
-  { en: "grape", zh: "葡萄" },
-  { en: "eyelash", zh: "睫毛" },
-  { en: "thick", zh: "厚的；浓密的" },
-  { en: "eyelash curler", zh: "睫毛夹" },
-  { en: "squeeze", zh: "挤；捏" },
-  { en: "closed", zh: "闭着的；关闭的" },
-  { en: "mascara", zh: "睫毛膏" },
-  { en: "eyeshadow", zh: "眼影" },
-  { en: "eyeliner", zh: "眼线（笔）" },
-  { en: "foundation", zh: "粉底" },
-  { en: "powder", zh: "蜜粉；散粉" },
-  { en: "blush", zh: "腮红；脸红" },
-  { en: "highlight", zh: "高光；强调" },
-  { en: "shade", zh: "色号；阴影" },
-  { en: "lipstick", zh: "口红" },
+  ["veto","否决（权）"],["dumb","哑的；愚蠢的"],["retract","收回；撤回"],["take back","收回（说过的话）"],
+  ["fair","公平的；公正的"],["hiring decision","招聘决定"],["I hate to...but","我很不愿意…但是"],
+  ["Name one","说一个（举个例子）"],["ginger","姜；姜黄色（头发）"],["ginger ale","姜汁汽水"],["lemon","柠檬"],
+  ["ginger cat","橘猫"],["upset","不安的；使心烦"],["photographer","摄影师"],["photography","摄影（术）"],
+  ["photograph","照片"],["family portrait","全家福"],["book the photographer","预约摄影师"],["pimple","痘痘；青春痘"],
+  ["straw","吸管；稻草"],["strawberry","草莓"],["blueberry","蓝莓"],["draw straws","抽签（决定）"],
+  ["bartender","酒保；调酒师"],["gold","金；金色"],["suggest","建议；提议"],["cherry","樱桃"],["grape","葡萄"],
+  ["eyelash","睫毛"],["thick","厚的；浓密的"],["eyelash curler","睫毛夹"],["squeeze","挤；捏"],["closed","闭着的；关闭的"],
+  ["mascara","睫毛膏"],["eyeshadow","眼影"],["eyeliner","眼线（笔）"],["foundation","粉底"],["powder","蜜粉；散粉"],
+  ["blush","腮红；脸红"],["highlight","高光；强调"],["shade","色号；阴影"],["lipstick","口红"],
 ];
 
-let items = load();
+let idc = 0;
+function uid() { return "x" + (idc++).toString(36) + Date.now().toString(36).slice(-3); }
+
+/* ---------- state ---------- */
+let state = loadState();
 let voices = [];
 let speakingId = null;
-let idCounter = 0;
-function uid() { return "w" + (idCounter++).toString(36) + Date.now().toString(36).slice(-3); }
 
-function load() {
-  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch { return []; }
+function loadState() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORE));
+    if (s && s.decks) return s;
+  } catch {}
+  // seed
+  return {
+    decks: [{
+      id: uid(),
+      name: "脑洞部长31天内容",
+      words: PRESET.map(([en, zh]) => ({ id: uid(), en, zh })),
+    }],
+    sentences: [],
+  };
 }
-function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(items)); } catch {} }
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch {} }
 
-function mergePreset() {
-  PRESET.forEach(p => {
-    if (!items.some(it => it.en.toLowerCase() === p.en.toLowerCase()))
-      items.push({ id: uid(), en: p.en, zh: p.zh });
-  });
-  save();
-}
-mergePreset();
-
-/* ---------- voices ---------- */
+/* ---------- voices / speech ---------- */
 function loadVoices() {
   voices = speechSynthesis.getVoices().filter(v => /en/i.test(v.lang));
   if (!voices.length) voices = speechSynthesis.getVoices();
-  const sel = $("#voiceSel");
-  sel.innerHTML = "";
-  voices.forEach((v, i) => {
-    const o = document.createElement("option");
-    o.value = i; o.textContent = `${v.name} (${v.lang})`;
-    sel.appendChild(o);
-  });
+  const sel = $("#voiceSel"); sel.innerHTML = "";
+  voices.forEach((v, i) => { const o = document.createElement("option"); o.value = i; o.textContent = `${v.name} (${v.lang})`; sel.appendChild(o); });
   const pref = voices.findIndex(v => /en-US|en-GB/i.test(v.lang));
   if (pref >= 0) sel.value = pref;
 }
@@ -308,229 +354,309 @@ function utter(text) {
   u.rate = parseFloat($("#rate").value);
   return u;
 }
-function speak(text, id) {
+function speak(text, id, rerender) {
   speechSynthesis.cancel();
   const u = utter(text);
-  if (id) { u.onstart = () => { speakingId = id; renderList(); }; u.onend = () => { speakingId = null; renderList(); }; }
+  if (id) { u.onstart = () => { speakingId = id; rerender && rerender(); }; u.onend = () => { speakingId = null; rerender && rerender(); }; }
   speechSynthesis.speak(u);
 }
-function readAll() {
+function readMany(arr, rerender) {
   speechSynthesis.cancel();
-  items.forEach((it) => {
+  arr.forEach(it => {
     const u = utter(it.en);
-    u.onstart = () => { speakingId = it.id; renderList(); };
-    u.onend = () => { if (speakingId === it.id) { speakingId = null; renderList(); } };
+    u.onstart = () => { speakingId = it.id; rerender && rerender(); };
+    u.onend = () => { if (speakingId === it.id) { speakingId = null; rerender && rerender(); } };
     speechSynthesis.speak(u);
   });
 }
+function stopSpeak() { speechSynthesis.cancel(); speakingId = null; renderWordList(); renderSents(); }
 
-/* ---------- translation (仅新增词) ---------- */
+/* ---------- translation (optional, for new items) ---------- */
 async function translate(text) {
   const url = "https://api.mymemory.translated.net/get?q=" + encodeURIComponent(text) + "&langpair=en|zh-CN";
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("net");
+  const res = await fetch(url); if (!res.ok) throw 0;
   const data = await res.json();
   const t = data && data.responseData && data.responseData.translatedText;
-  if (!t) throw new Error("empty");
-  return t;
+  if (!t) throw 0; return t;
 }
-async function ensureTranslation(it) {
-  if (it.zh) return;
-  const el = document.querySelector("#zh-" + it.id);
-  if (el) { el.textContent = "翻译中…"; }
-  try { it.zh = await translate(it.en); save(); if (el) el.textContent = it.zh; }
-  catch { if (el) el.textContent = "翻译需联网，点此重试"; }
+function parseLine(line) {
+  // "en = zh" or "en | zh"  -> {en, zh}
+  const m = line.split(/\s*[=|]\s*/);
+  if (m.length >= 2 && m[1].trim()) return { en: m[0].trim(), zh: m.slice(1).join(" ").trim() };
+  return { en: line.trim(), zh: "" };
 }
 
-/* ---------- learn list ---------- */
-function addFromInput() {
-  const lines = $("#input").value.split("\n").map(s => s.trim()).filter(Boolean);
-  if (!lines.length) return;
-  const added = [];
-  lines.forEach(en => {
-    if (items.some(it => it.en.toLowerCase() === en.toLowerCase())) return;
-    const it = { id: uid(), en, zh: "" }; items.push(it); added.push(it);
+/* ================= TABS / VIEWS ================= */
+document.querySelectorAll(".tab").forEach(t => {
+  t.onclick = () => {
+    document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+    t.classList.add("active");
+    const v = t.dataset.view;
+    $("#view-words").classList.toggle("hidden", v !== "words");
+    $("#view-sentences").classList.toggle("hidden", v !== "sentences");
+    speechSynthesis.cancel();
+    if (v === "words") showDeckList();
+    if (v === "sentences") renderSents();
+  };
+});
+
+/* ================= WORDS: deck list ================= */
+let curDeckId = null;
+
+function showDeckList() {
+  $("#deckDetail").classList.add("hidden");
+  $("#quizView").classList.add("hidden");
+  $("#deckList").classList.remove("hidden");
+  $("#newDeckPanel").classList.remove("hidden");
+  renderDeckList();
+}
+function renderDeckList() {
+  const box = $("#deckList"); box.innerHTML = "";
+  state.decks.forEach(d => {
+    const el = document.createElement("div");
+    el.className = "deck";
+    el.innerHTML = `<div class="dico">📚</div>
+      <div class="dbody"><div class="dname"></div><div class="dmeta">${d.words.length} 个单词 · 点开学习/测验</div></div>
+      <div class="darrow">›</div>`;
+    el.querySelector(".dname").textContent = d.name;
+    el.onclick = () => openDeck(d.id);
+    box.appendChild(el);
   });
-  $("#input").value = ""; save(); renderList();
-  added.forEach(ensureTranslation);
 }
-function removeItem(id) { items = items.filter(it => it.id !== id); save(); renderList(); }
-function clearAll() { if (!items.length) return; if (!confirm("确定清空整个单词列表？")) return; items = []; save(); renderList(); }
+$("#newDeckBtn").onclick = () => {
+  const name = $("#newDeckName").value.trim();
+  if (!name) return;
+  state.decks.push({ id: uid(), name, words: [] });
+  $("#newDeckName").value = ""; save(); renderDeckList();
+};
 
-function renderList() {
-  const list = $("#list");
-  $("#empty").style.display = items.length ? "none" : "block";
+/* ================= WORDS: deck detail ================= */
+function curDeck() { return state.decks.find(d => d.id === curDeckId); }
+
+function openDeck(id) {
+  curDeckId = id;
+  $("#deckList").classList.add("hidden");
+  $("#newDeckPanel").classList.add("hidden");
+  $("#quizView").classList.add("hidden");
+  $("#deckDetail").classList.remove("hidden");
+  $("#deckTitle").textContent = curDeck().name;
+  renderWordList();
+}
+$("#deckBack").onclick = showDeckList;
+
+function renderWordList() {
+  const d = curDeck(); if (!d) return;
+  const list = $("#wordList");
+  $("#wordEmpty").classList.toggle("hidden", d.words.length > 0);
   list.innerHTML = "";
-  items.forEach((it, i) => {
+  d.words.forEach((it, i) => {
     const li = document.createElement("li");
     li.className = "item" + (speakingId === it.id ? " speaking" : "");
     const idx = document.createElement("div"); idx.className = "idx"; idx.textContent = i + 1;
     const play = document.createElement("button");
     play.className = "play"; play.textContent = speakingId === it.id ? "❚❚" : "▶";
     play.setAttribute("aria-label", "朗读 " + it.en);
-    play.onclick = () => speak(it.en, it.id);
+    play.onclick = () => speak(it.en, it.id, renderWordList);
     const body = document.createElement("div"); body.className = "cbody";
     const en = document.createElement("div"); en.className = "en"; en.textContent = it.en;
-    const zh = document.createElement("div"); zh.id = "zh-" + it.id; zh.className = "zh";
-    zh.textContent = it.zh || "翻译中…"; zh.style.cursor = "pointer"; zh.title = "点击重新翻译";
-    zh.onclick = () => { it.zh = ""; ensureTranslation(it); };
+    const zh = document.createElement("div"); zh.className = "zh"; zh.id = "zh-" + it.id;
+    zh.textContent = it.zh || "（无中文，点此翻译）"; zh.style.cursor = "pointer";
+    zh.onclick = () => ensureTranslation(it);
     body.appendChild(en); body.appendChild(zh);
     const rm = document.createElement("button"); rm.className = "rm"; rm.textContent = "✕";
-    rm.setAttribute("aria-label", "删除 " + it.en); rm.onclick = () => removeItem(it.id);
+    rm.setAttribute("aria-label", "删除 " + it.en);
+    rm.onclick = () => { d.words = d.words.filter(w => w.id !== it.id); save(); renderWordList(); };
     li.appendChild(idx); li.appendChild(play); li.appendChild(body); li.appendChild(rm);
     list.appendChild(li);
   });
 }
-
-/* ---------- tabs ---------- */
-document.querySelectorAll(".tab").forEach(t => {
-  t.onclick = () => {
-    document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
-    t.classList.add("active");
-    const name = t.dataset.tab;
-    $("#tab-learn").classList.toggle("hidden", name !== "learn");
-    $("#tab-quiz").classList.toggle("hidden", name !== "quiz");
-    speechSynthesis.cancel();
-    if (name === "quiz") resetQuizToStart();
-  };
-});
-
-/* ---------- QUIZ ---------- */
-let quiz = null; // { queue:[items], i, correct, wrong:[] }
-
-function shuffle(a) {
-  const arr = a.slice();
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
+async function ensureTranslation(it) {
+  const el = $("#zh-" + it.id); if (el) el.textContent = "翻译中…";
+  try { it.zh = await translate(it.en); save(); if (el) el.textContent = it.zh; }
+  catch { if (el) el.textContent = "翻译需联网，点此重试"; }
 }
+$("#addWordBtn").onclick = () => {
+  const d = curDeck();
+  const lines = $("#wordInput").value.split("\n").map(s => s.trim()).filter(Boolean);
+  const added = [];
+  lines.forEach(line => {
+    const { en, zh } = parseLine(line);
+    if (!en || d.words.some(w => w.en.toLowerCase() === en.toLowerCase())) return;
+    const it = { id: uid(), en, zh }; d.words.push(it); added.push(it);
+  });
+  $("#wordInput").value = ""; save(); renderWordList();
+  added.filter(it => !it.zh).forEach(ensureTranslation);
+};
+$("#readDeckBtn").onclick = () => readMany(curDeck().words, renderWordList);
+$("#stopBtn1").onclick = stopSpeak;
+$("#deleteDeckBtn").onclick = () => {
+  if (!confirm(`确定删除分组「${curDeck().name}」及其中所有单词？`)) return;
+  state.decks = state.decks.filter(d => d.id !== curDeckId); save(); showDeckList();
+};
 
-function resetQuizToStart() {
-  $("#quizStart").classList.remove("hidden");
+/* ================= QUIZ (typing) ================= */
+let quiz = null;
+
+function openQuiz() {
+  $("#deckDetail").classList.add("hidden");
+  $("#quizView").classList.remove("hidden");
+  $("#quizTitle").textContent = "测验 · " + curDeck().name;
+  $("#quizSetup").classList.remove("hidden");
   $("#quizPlay").classList.add("hidden");
   $("#quizResult").classList.add("hidden");
-  const n = items.length;
-  $("#quizAvail").textContent = n < 4
-    ? `⚠️ 至少需要 4 个单词才能测验，当前 ${n} 个。`
-    : `当前共 ${n} 个单词可用于测验。`;
-  $("#startQuizBtn").disabled = n < 4;
+  const n = curDeck().words.filter(w => w.zh).length;
+  $("#quizAvail").textContent = n < 1 ? "⚠️ 这个分组还没有带中文的单词。" : `本分组可测 ${n} 个单词。`;
+  $("#startQuizBtn").disabled = n < 1;
 }
+$("#deckQuizBtn").onclick = openQuiz;
+$("#quizBack").onclick = () => openDeck(curDeckId);
+$("#backToDeckBtn").onclick = () => openDeck(curDeckId);
+
+let quizDir = "en2zh";
+$("#dirSeg").querySelectorAll("button").forEach(b => {
+  b.onclick = () => { $("#dirSeg").querySelectorAll("button").forEach(x => x.classList.remove("on")); b.classList.add("on"); quizDir = b.dataset.dir; };
+});
+
+function shuffle(a) { const r = a.slice(); for (let i = r.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [r[i], r[j]] = [r[j], r[i]]; } return r; }
 
 function startQuiz() {
-  const pool = items.filter(it => it.zh);
-  if (pool.length < 4) { alert("至少需要 4 个带中文意思的单词～"); return; }
+  const pool = curDeck().words.filter(w => w.zh);
+  if (!pool.length) return;
   let count = parseInt($("#qCount").value, 10);
   let queue = shuffle(pool);
   if (count > 0) queue = queue.slice(0, count);
-  quiz = { queue, i: 0, correct: 0, wrong: [] };
-  $("#quizStart").classList.add("hidden");
+  queue = queue.map(w => ({ w, dir: quizDir === "mix" ? (Math.random() < .5 ? "en2zh" : "zh2en") : quizDir }));
+  quiz = { queue, i: 0, correct: 0, wrong: [], answered: false };
+  $("#quizSetup").classList.add("hidden");
   $("#quizResult").classList.add("hidden");
   $("#quizPlay").classList.remove("hidden");
-  showQuestion();
+  showQ();
 }
+$("#startQuizBtn").onclick = startQuiz;
+$("#againBtn").onclick = startQuiz;
 
-function showQuestion() {
+function showQ() {
   const { queue, i } = quiz;
-  const cur = queue[i];
+  const { w, dir } = queue[i];
+  quiz.answered = false;
   $("#qProgress").textContent = `第 ${i + 1} / ${queue.length} 题`;
   $("#qScore").textContent = `✅ ${quiz.correct}`;
   $("#qBar").style.width = (i / queue.length * 100) + "%";
-  $("#qWord").textContent = cur.en;
   $("#qFeedback").textContent = ""; $("#qFeedback").className = "feedback";
+  $("#qCorrect").classList.add("hidden");
+  $("#qGradeRow").classList.add("hidden");
   $("#qNextRow").classList.add("hidden");
-
-  // build options: correct + 3 distractors
-  const others = shuffle(items.filter(it => it.zh && it.zh !== cur.zh)).slice(0, 3);
-  const opts = shuffle([cur, ...others]);
-  const box = $("#qOpts"); box.innerHTML = "";
-  const keys = ["A", "B", "C", "D"];
-  opts.forEach((o, idx) => {
-    const b = document.createElement("button");
-    b.className = "opt";
-    b.innerHTML = `<span class="key">${keys[idx]}</span><span>${o.zh}</span>`;
-    b.onclick = () => answer(b, o, cur);
-    box.appendChild(b);
-  });
-
-  if ($("#qAutoSpeak").checked) speak(cur.en);
-}
-
-function answer(btn, chosen, cur) {
-  if (quiz.answered) return;
-  quiz.answered = true;
-  const buttons = Array.from($("#qOpts").children);
-  buttons.forEach(b => b.disabled = true);
-  const correct = chosen.zh === cur.zh;
-  if (correct) {
-    btn.classList.add("correct");
-    quiz.correct++;
-    $("#qFeedback").textContent = "✅ 答对了！";
-    $("#qFeedback").className = "feedback ok";
+  const inp = $("#qInput"); inp.value = ""; inp.disabled = false; inp.focus();
+  const wordEl = $("#qWord");
+  if (dir === "en2zh") {
+    $("#qLabel").textContent = "请输入中文意思";
+    wordEl.textContent = w.en; wordEl.className = "pword";
+    $("#qSpeakBtn").classList.remove("hidden");
+    if ($("#qAutoSpeak").checked) speak(w.en);
   } else {
-    btn.classList.add("wrong");
-    buttons.forEach(b => { if (b.querySelector("span:last-child").textContent === cur.zh) b.classList.add("correct"); });
-    quiz.wrong.push(cur);
-    $("#qFeedback").textContent = `❌ 正确答案：${cur.zh}`;
-    $("#qFeedback").className = "feedback no";
+    $("#qLabel").textContent = "请输入英文单词";
+    wordEl.textContent = w.zh; wordEl.className = "pword zh";
+    $("#qSpeakBtn").classList.add("hidden");
   }
-  $("#qScore").textContent = `✅ ${quiz.correct}`;
-  $("#qNextRow").classList.remove("hidden");
+}
+$("#qSpeakBtn").onclick = () => { const q = quiz.queue[quiz.i]; speak(q.w.en); };
+
+function normEn(s) { return (s || "").toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim(); }
+function normZh(s) { return (s || "").replace(/[\s（）()【】\[\]。，,、；;：:！!？?～~…·\-—\/]/g, ""); }
+
+function judge(input, w, dir) {
+  if (dir === "zh2en") return normEn(input) === normEn(w.en) && normEn(input) !== "";
+  // en2zh: accept if matches whole or any sense separated by ；;/，,、
+  const parts = w.zh.split(/[；;\/，,、]/).map(normZh).filter(Boolean);
+  const ni = normZh(input);
+  if (!ni) return false;
+  return ni === normZh(w.zh) || parts.includes(ni) || parts.some(p => p && (p.includes(ni) || ni.includes(p)));
 }
 
-function nextQuestion() {
-  quiz.answered = false;
+function submitAnswer() {
+  if (quiz.answered) return;
+  const { w, dir } = quiz.queue[quiz.i];
+  const input = $("#qInput").value;
+  if (!input.trim()) { $("#qInput").focus(); return; }
+  quiz.answered = true;
+  $("#qInput").disabled = true;
+  const right = judge(input, w, dir);
+  const answer = dir === "en2zh" ? w.zh : w.en;
+  $("#qCorrect").innerHTML = `正确答案：<b>${answer}</b>　（你的：${input.trim()}）`;
+  $("#qCorrect").classList.remove("hidden");
+  if (right) markResult(true, "✅ 答对了！");
+  else {
+    $("#qFeedback").textContent = "❌ 不太对"; $("#qFeedback").className = "feedback no";
+    $("#qGradeRow").classList.remove("hidden"); // let user override (typing is fuzzy)
+    $("#qNextRow").classList.remove("hidden");
+    quiz.pendingWrong = w;
+  }
+}
+function markResult(isRight, msg) {
+  $("#qFeedback").textContent = msg; $("#qFeedback").className = "feedback " + (isRight ? "ok" : "no");
+  $("#qGradeRow").classList.add("hidden");
+  $("#qNextRow").classList.remove("hidden");
+  if (isRight) quiz.correct++; else if (quiz.pendingWrong) quiz.wrong.push(quiz.pendingWrong);
+  quiz.pendingWrong = null;
+  $("#qScore").textContent = `✅ ${quiz.correct}`;
+}
+$("#qSubmitBtn").onclick = submitAnswer;
+$("#qInput").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); if (quiz && quiz.answered) nextQ(); else submitAnswer(); } });
+$("#markRight").onclick = () => markResult(true, "✅ 算对！");
+$("#markWrong").onclick = () => markResult(false, "❌ 记错了，稍后复习");
+
+function nextQ() {
   quiz.i++;
   if (quiz.i >= quiz.queue.length) return finishQuiz();
-  showQuestion();
+  showQ();
 }
+$("#qNextBtn").onclick = nextQ;
 
 function finishQuiz() {
   $("#quizPlay").classList.add("hidden");
   $("#quizResult").classList.remove("hidden");
-  const total = quiz.queue.length, c = quiz.correct;
-  const pct = Math.round(c / total * 100);
+  const total = quiz.queue.length, c = quiz.correct, pct = Math.round(c / total * 100);
   $("#rScore").textContent = `${c} / ${total}`;
-  let msg = "继续加油！";
-  if (pct === 100) msg = "🎉 满分！太强了！";
-  else if (pct >= 80) msg = "👏 很不错，快掌握了！";
-  else if (pct >= 60) msg = "🙂 还行，再多练几次～";
-  else msg = "💪 别灰心，多跟读几遍再来！";
-  $("#rMsg").textContent = msg;
+  $("#rMsg").textContent = pct === 100 ? "🎉 满分！太强了！" : pct >= 80 ? "👏 很不错，快掌握了！" : pct >= 60 ? "🙂 还行，再多练几次～" : "💪 别灰心，多跟读几遍再来！";
   const wl = $("#rWrong"); wl.innerHTML = "";
   if (quiz.wrong.length) {
-    const title = document.createElement("div");
-    title.style.cssText = "color:var(--muted);font-size:13px;margin:14px 0 8px;";
-    title.textContent = "需要再复习的词：";
-    wl.appendChild(title);
-    quiz.wrong.forEach(w => {
-      const row = document.createElement("div");
-      row.className = "wl";
-      row.innerHTML = `<b>${w.en}</b><span>${w.zh}</span>`;
-      row.style.cursor = "pointer"; row.title = "点击朗读";
-      row.onclick = () => speak(w.en);
-      wl.appendChild(row);
-    });
+    const t = document.createElement("div"); t.style.cssText = "color:var(--muted);font-size:13px;margin:14px 0 8px;"; t.textContent = "需要再复习的词（点击朗读）："; wl.appendChild(t);
+    quiz.wrong.forEach(w => { const r = document.createElement("div"); r.className = "wl"; r.innerHTML = `<b></b><span></span>`; r.querySelector("b").textContent = w.en; r.querySelector("span").textContent = w.zh; r.onclick = () => speak(w.en); wl.appendChild(r); });
   }
 }
 
-/* ---------- events ---------- */
-$("#addBtn").onclick = addFromInput;
-$("#readAllBtn").onclick = readAll;
-$("#stopBtn").onclick = () => { speechSynthesis.cancel(); speakingId = null; renderList(); };
-$("#clearBtn").onclick = clearAll;
-$("#rate").oninput = (e) => $("#rateVal").textContent = parseFloat(e.target.value).toFixed(1);
-$("#input").addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") addFromInput(); });
+/* ================= SENTENCES ================= */
+function renderSents() {
+  const list = $("#sentList");
+  $("#sentEmpty").classList.toggle("hidden", state.sentences.length > 0);
+  list.innerHTML = "";
+  state.sentences.forEach((it, i) => {
+    const li = document.createElement("li");
+    li.className = "item sent" + (speakingId === it.id ? " speaking" : "");
+    const top = document.createElement("div"); top.className = "stop";
+    const play = document.createElement("button"); play.className = "play"; play.textContent = speakingId === it.id ? "❚❚" : "▶";
+    play.setAttribute("aria-label", "朗读句子"); play.onclick = () => speak(it.en, it.id, renderSents);
+    const txt = document.createElement("div"); txt.className = "stext"; txt.textContent = (i + 1) + ". " + it.en;
+    const rm = document.createElement("button"); rm.className = "rm"; rm.textContent = "✕";
+    rm.onclick = () => { state.sentences = state.sentences.filter(s => s.id !== it.id); save(); renderSents(); };
+    top.appendChild(play); top.appendChild(txt); top.appendChild(rm);
+    li.appendChild(top);
+    if (it.zh) { const z = document.createElement("div"); z.className = "szh"; z.textContent = it.zh; li.appendChild(z); }
+    list.appendChild(li);
+  });
+}
+$("#addSentBtn").onclick = () => {
+  const lines = $("#sentInput").value.split("\n").map(s => s.trim()).filter(Boolean);
+  lines.forEach(line => { const { en, zh } = parseLine(line); if (en) state.sentences.push({ id: uid(), en, zh }); });
+  $("#sentInput").value = ""; save(); renderSents();
+};
+$("#readSentsBtn").onclick = () => readMany(state.sentences, renderSents);
+$("#stopBtn2").onclick = stopSpeak;
 
-$("#startQuizBtn").onclick = startQuiz;
-$("#qSpeakBtn").onclick = () => { if (quiz) speak(quiz.queue[quiz.i].en); };
-$("#qNextBtn").onclick = nextQuestion;
-$("#againBtn").onclick = startQuiz;
-$("#reviewBtn").onclick = () => document.querySelector('.tab[data-tab="learn"]').click();
+$("#rate").oninput = (e) => $("#rateVal").textContent = parseFloat(e.target.value).toFixed(1);
 
 /* ---------- init ---------- */
-renderList();
+showDeckList();
 </script>
 </body>
 </html>
