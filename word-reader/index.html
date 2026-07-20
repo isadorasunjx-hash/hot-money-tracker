@@ -164,9 +164,68 @@
 const $ = (s) => document.querySelector(s);
 const STORE_KEY = "word-reader-items-v1";
 
+/* 内置词表（来自你的截图，中文意思已预填） */
+const PRESET = [
+  { en: "veto", zh: "否决（权）" },
+  { en: "dumb", zh: "哑的；愚蠢的" },
+  { en: "retract", zh: "收回；撤回" },
+  { en: "take back", zh: "收回（说过的话）" },
+  { en: "fair", zh: "公平的；公正的" },
+  { en: "hiring decision", zh: "招聘决定" },
+  { en: "I hate to...but", zh: "我很不愿意…但是" },
+  { en: "Name one", zh: "说一个（举个例子）" },
+  { en: "ginger", zh: "姜；姜黄色（头发）" },
+  { en: "ginger ale", zh: "姜汁汽水" },
+  { en: "lemon", zh: "柠檬" },
+  { en: "ginger cat", zh: "橘猫" },
+  { en: "upset", zh: "不安的；使心烦" },
+  { en: "photographer", zh: "摄影师" },
+  { en: "photography", zh: "摄影（术）" },
+  { en: "photograph", zh: "照片" },
+  { en: "family portrait", zh: "全家福" },
+  { en: "book the photographer", zh: "预约摄影师" },
+  { en: "pimple", zh: "痘痘；青春痘" },
+  { en: "straw", zh: "吸管；稻草" },
+  { en: "strawberry", zh: "草莓" },
+  { en: "blueberry", zh: "蓝莓" },
+  { en: "draw straws", zh: "抽签（决定）" },
+  { en: "bartender", zh: "酒保；调酒师" },
+  { en: "gold", zh: "金；金色" },
+  { en: "suggest", zh: "建议；提议" },
+  { en: "cherry", zh: "樱桃" },
+  { en: "grape", zh: "葡萄" },
+  { en: "eyelash", zh: "睫毛" },
+  { en: "thick", zh: "厚的；浓密的" },
+  { en: "eyelash curler", zh: "睫毛夹" },
+  { en: "squeeze", zh: "挤；捏" },
+  { en: "closed", zh: "闭着的；关闭的" },
+  { en: "mascara", zh: "睫毛膏" },
+  { en: "eyeshadow", zh: "眼影" },
+  { en: "eyeliner", zh: "眼线（笔）" },
+  { en: "foundation", zh: "粉底" },
+  { en: "powder", zh: "蜜粉；散粉" },
+  { en: "blush", zh: "腮红；脸红" },
+  { en: "highlight", zh: "高光；强调" },
+  { en: "shade", zh: "色号；阴影" },
+  { en: "lipstick", zh: "口红" },
+];
+
 let items = load();            // [{ id, en, zh }]
 let voices = [];
 let speakingId = null;
+
+/* 合并内置词表：把 PRESET 中还没有的词补进列表 */
+function mergePreset() {
+  let changed = false;
+  PRESET.forEach(p => {
+    if (!items.some(it => it.en.toLowerCase() === p.en.toLowerCase())) {
+      items.push({ id: Math.random().toString(36).slice(2, 9), en: p.en, zh: p.zh });
+      changed = true;
+    }
+  });
+  if (changed) save();
+}
+mergePreset();
 
 /* ---------- persistence ---------- */
 function load() {
