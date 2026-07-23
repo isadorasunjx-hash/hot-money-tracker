@@ -310,11 +310,28 @@ const PRESET = [
   ["blush","腮红；脸红"],["highlight","高光；强调"],["shade","色号；阴影"],["lipstick","口红"],
 ];
 
+const DAY34 = [
+  ["allergic","过敏的"],["allergy","过敏（症）"],["allergic reaction","过敏反应"],["nut","坚果"],
+  ["peanut","花生"],["crab","螃蟹"],["shrimp","虾"],["shellfish","贝类；带壳海鲜"],["seafood","海鲜"],
+  ["shell","壳"],["cough","咳嗽"],["cough drops","止咳含片"],["eye drops","眼药水"],["cough syrup","止咳糖浆"],
+  ["throat","喉咙"],["breath","呼吸；气息"],["sleepover","在别人家过夜（留宿聚会）"],["cousin","表 / 堂兄弟姐妹"],
+  ["watch/take care of sb","照顾某人"],["check on sb/somewhere","查看某人 / 某处的情况"],["bark","（狗）吠叫；树皮"],
+  ["extremely","极其；非常"],["intelligent","聪明的；有才智的"],["disappointed in sb","对某人失望"],
+  ["odd","奇怪的；古怪的"],["free spirit","自由不羁的人"],["free spirited","自由奔放的；无拘无束的"],["roll eyes","翻白眼"],
+];
+
+/* 内置分组（按天）。key 用于「只注入一次」，用户删掉后不会自动重建。 */
+const SEED_DECKS = [
+  { key: "day31", name: "脑洞部长31天内容", words: PRESET },
+  { key: "day34", name: "脑洞部长34天内容", words: DAY34 },
+];
+
 let idc = 0;
 function uid() { return "x" + (idc++).toString(36) + Date.now().toString(36).slice(-3); }
 
 /* ---------- state ---------- */
 let state = loadState();
+ensureSeedDecks();
 let voices = [];
 let speakingId = null;
 
@@ -323,15 +340,21 @@ function loadState() {
     const s = JSON.parse(localStorage.getItem(STORE));
     if (s && s.decks) return s;
   } catch {}
-  // seed
-  return {
-    decks: [{
-      id: uid(),
-      name: "脑洞部长31天内容",
-      words: PRESET.map(([en, zh]) => ({ id: uid(), en, zh })),
-    }],
-    sentences: [],
-  };
+  return { decks: [], sentences: [], seeded: [] };
+}
+function deckFromSeed(sd) {
+  return { id: uid(), name: sd.name, words: sd.words.map(([en, zh]) => ({ id: uid(), en, zh })) };
+}
+/* 注入内置分组：每个 key 只注入一次；已存在同名分组则跳过（避免重复）。 */
+function ensureSeedDecks() {
+  state.seeded = state.seeded || [];
+  let changed = false;
+  SEED_DECKS.forEach(sd => {
+    if (state.seeded.includes(sd.key)) return;
+    if (!state.decks.some(d => d.name === sd.name)) { state.decks.push(deckFromSeed(sd)); changed = true; }
+    state.seeded.push(sd.key); changed = true;
+  });
+  if (changed) save();
 }
 function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch {} }
 
