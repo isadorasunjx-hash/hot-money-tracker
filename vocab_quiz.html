@@ -306,9 +306,9 @@
       <div class="panel" id="quizSetup">
         <label class="small">出题方向</label>
         <div class="seg" id="dirSeg">
-          <button data-dir="en2zh" class="on">看英文 → 打中文</button>
-          <button data-dir="zh2en">看中文 → 打英文</button>
-          <button data-dir="mix">混合</button>
+          <button data-dir="both" class="on">双向必考</button>
+          <button data-dir="en2zh">英 → 中</button>
+          <button data-dir="zh2en">中 → 英</button>
         </div>
         <div class="row" style="margin-top:16px">
           <div class="field">每组
@@ -318,7 +318,7 @@
         </div>
         <div class="row"><button id="startQuizBtn" class="grow">🚀 开始测验</button></div>
         <div class="hint" id="quizAvail"></div>
-        <div class="hint">答对才算通过、进入「已掌握」；答错的会进入「再来一次」，只重测错词，直到全部答对。</div>
+        <div class="hint">「双向必考」：每个词要「英→中」和「中→英」都答对才算掌握。答错的进入「再来一次」，只重测错词，直到全部答对。</div>
       </div>
 
       <div class="panel hidden" id="quizPlay">
@@ -455,21 +455,23 @@ function progFor(pkey) {
   state.progress = state.progress || {};
   const p = state.progress[pkey] || (state.progress[pkey] = {});
   p.passed = p.passed || {};    // 背单词 掌握
-  p.qpassed = p.qpassed || {};  // 测验 掌握
+  p.qz = p.qz || {};            // 测验双向：word -> {e:1 英→中过, z:1 中→英过}
+  if (p.qpassed) {              // 迁移旧的单向测验记录：视为两个方向都过
+    for (const k in p.qpassed) { const o = p.qz[k] || (p.qz[k] = {}); o.e = 1; o.z = 1; }
+    delete p.qpassed;
+  }
   return p;
-}
-function countProg(pkey, which) {
-  return state.progress && state.progress[pkey] && state.progress[pkey][which]
-    ? Object.keys(state.progress[pkey][which]).length : 0;
 }
 /* 背单词进度 */
 function isPassed(pkey, en) { return !!progFor(pkey).passed[en.toLowerCase()]; }
 function setPassed(pkey, en) { progFor(pkey).passed[en.toLowerCase()] = 1; }
-function passedCount(pkey) { return countProg(pkey, "passed"); }
-/* 测验进度（独立） */
-function isQPassed(pkey, en) { return !!progFor(pkey).qpassed[en.toLowerCase()]; }
-function setQPassed(pkey, en) { progFor(pkey).qpassed[en.toLowerCase()] = 1; }
-function qpassedCount(pkey) { return countProg(pkey, "qpassed"); }
+function passedCount(pkey) { return Object.keys(progFor(pkey).passed).length; }
+/* 测验进度（双向，两个方向都答对才算掌握） */
+function qzObj(pkey, en) { const p = progFor(pkey); const k = en.toLowerCase(); return p.qz[k] || (p.qz[k] = {}); }
+function qzDirPassed(pkey, en, dir) { const o = progFor(pkey).qz[en.toLowerCase()] || {}; return dir === "en2zh" ? !!o.e : !!o.z; }
+function qzSetDir(pkey, en, dir) { const o = qzObj(pkey, en); if (dir === "en2zh") o.e = 1; else o.z = 1; }
+function qzMastered(pkey, en) { const o = progFor(pkey).qz[en.toLowerCase()] || {}; return !!o.e && !!o.z; }
+function qpassedCount(pkey) { const qz = progFor(pkey).qz; let n = 0; for (const k in qz) if (qz[k].e && qz[k].z) n++; return n; }
 
 /* ---------- voices / speech ---------- */
 function loadVoices() {
@@ -704,31 +706,46 @@ function openQuiz() {
   $("#quizSetup").classList.remove("hidden");
   $("#quizPlay").classList.add("hidden");
   $("#quizResult").classList.add("hidden");
-  const n = curWords.filter(w => w.zh && !isQPassed(curPKey, w.en)).length;
+  const n = curWords.filter(w => w.zh && !qzMastered(curPKey, w.en)).length;
   $("#quizAvail").textContent = n < 1
-    ? "🎉 这个分组测验已全部通过！可点「重置测验」重来。"
-    : `测验还剩 ${n} 个未通过。`;
+    ? "🎉 这个分组测验已全部通过（双向）！可点「重置测验」重来。"
+    : `还剩 ${n} 个词未完全掌握（需两个方向都答对）。`;
   $("#startQuizBtn").disabled = n < 1;
 }
 $("#deckQuizBtn").onclick = openQuiz;
 $("#quizBack").onclick = () => openDeck(curKind, curDeckId);
 $("#backToDeckBtn").onclick = () => openDeck(curKind, curDeckId);
 
-let quizDir = "en2zh";
+let quizDir = "both";
 $("#dirSeg").querySelectorAll("button").forEach(b => {
   b.onclick = () => { $("#dirSeg").querySelectorAll("button").forEach(x => x.classList.remove("on")); b.classList.add("on"); quizDir = b.dataset.dir; };
 });
-function pickDir() { return quizDir === "mix" ? (Math.random() < .5 ? "en2zh" : "zh2en") : quizDir; }
 
 function shuffle(a) { const r = a.slice(); for (let i = r.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [r[i], r[j]] = [r[j], r[i]]; } return r; }
 
-// start a fresh batch of not-yet-quiz-passed words
-function startQuiz() {
+// build this batch's question entries. mode 'both' → each word contributes the
+// direction(s) it hasn't passed yet; single-direction modes contribute just that one.
+function buildBatchEntries() {
+  const mode = quizDir; // 'both' | 'en2zh' | 'zh2en'
   const size = parseInt($("#qBatch").value, 10);
-  const pool = curWords.filter(w => w.zh && !isQPassed(curPKey, w.en));
-  if (!pool.length) { alert("🎉 这个分组测验已全部通过！可点「重置测验」重来。"); return; }
-  const batch = shuffle(pool).slice(0, size).map(w => ({ w, dir: pickDir() }));
-  startRound(batch, false);
+  const pool = curWords.filter(w => {
+    if (!w.zh) return false;
+    if (mode === "both") return !qzMastered(curPKey, w.en);
+    return !qzDirPassed(curPKey, w.en, mode);
+  });
+  if (!pool.length) return null;
+  const words = shuffle(pool).slice(0, size);
+  const entries = [];
+  words.forEach(w => {
+    const dirs = mode === "both" ? ["en2zh", "zh2en"] : [mode];
+    dirs.forEach(d => { if (!qzDirPassed(curPKey, w.en, d)) entries.push({ w, dir: d }); });
+  });
+  return shuffle(entries);
+}
+function startQuiz() {
+  const entries = buildBatchEntries();
+  if (!entries || !entries.length) { alert("🎉 这个分组测验已全部通过！可点「重置测验」重来。"); return; }
+  startRound(entries, false);
 }
 // run one round over the given entries [{w,dir}]
 function startRound(entries, isRetry) {
@@ -804,7 +821,7 @@ function markResult(isRight, msg) {
   $("#qFeedback").textContent = msg; $("#qFeedback").className = "feedback " + (isRight ? "ok" : "no");
   $("#qGradeRow").classList.add("hidden");
   $("#qNextRow").classList.remove("hidden");
-  if (isRight) { quiz.correct++; setQPassed(curPKey, cur.w.en); save(); }
+  if (isRight) { quiz.correct++; qzSetDir(curPKey, cur.w.en, cur.dir); save(); }
   else { quiz.wrong.push(cur); }
   $("#qScore").textContent = `✅ ${quiz.correct}`;
 }
