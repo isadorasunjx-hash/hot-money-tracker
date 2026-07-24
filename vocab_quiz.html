@@ -209,10 +209,12 @@
 
       <!-- study/progress panel (all decks) -->
       <div class="panel" id="studyPanel">
-        <div class="quizTop" style="margin-bottom:6px"><span id="deckProgressText">进度</span></div>
-        <div class="bar" style="margin:8px 0 14px"><i id="deckProgressBar"></i></div>
+        <div class="quizTop" style="margin-bottom:4px"><span>🎯 背单词进度</span><span id="studyProgText">0 / 0</span></div>
+        <div class="bar" style="margin:6px 0 12px"><i id="studyProgBar"></i></div>
+        <div class="quizTop" style="margin-bottom:4px"><span>📝 测验进度</span><span id="quizProgText">0 / 0</span></div>
+        <div class="bar" style="margin:6px 0 14px"><i id="quizProgBar"></i></div>
         <div class="row" style="margin-top:0; align-items:center">
-          <div class="field">每组
+          <div class="field">背单词每组
             <select id="batchSize">
               <option value="10">10 个</option>
               <option value="20" selected>20 个</option>
@@ -224,9 +226,12 @@
         </div>
         <div class="row">
           <button id="startStudyBtn" class="grow">🎯 开始背单词</button>
-          <button id="deckQuizBtn" class="ghost">📝 测验</button>
+          <button id="deckQuizBtn" class="ghost">📝 开始测验</button>
         </div>
-        <div class="row"><button class="ghost sm" id="resetProgBtn">↺ 重置本组进度</button></div>
+        <div class="row">
+          <button class="ghost sm" id="resetStudyBtn">↺ 重置背单词</button>
+          <button class="ghost sm" id="resetQuizBtn">↺ 重置测验</button>
+        </div>
       </div>
 
       <!-- editable word list (custom decks only) -->
@@ -306,13 +311,14 @@
           <button data-dir="mix">混合</button>
         </div>
         <div class="row" style="margin-top:16px">
-          <div class="field">题量
-            <select id="qCount"><option value="10">10 题</option><option value="20">20 题</option><option value="0">全部</option></select>
+          <div class="field">每组
+            <select id="qBatch"><option value="10">10 个</option><option value="20" selected>20 个</option><option value="30">30 个</option><option value="50">50 个</option></select>
           </div>
           <label class="field" style="cursor:pointer"><input type="checkbox" id="qAutoSpeak" checked /> 出英文时自动朗读</label>
         </div>
         <div class="row"><button id="startQuizBtn" class="grow">🚀 开始测验</button></div>
         <div class="hint" id="quizAvail"></div>
+        <div class="hint">答对才算通过、进入「已掌握」；答错的会进入「再来一次」，只重测错词，直到全部答对。</div>
       </div>
 
       <div class="panel hidden" id="quizPlay">
@@ -445,10 +451,25 @@ const EXAM_META = [
   { key: "ielts", name: "雅思 IELTS",  icon: "🎓" },
 ];
 function examWords(key) { return (window.EXAM_DECKS && window.EXAM_DECKS[key]) || []; }
-function progFor(pkey) { state.progress = state.progress || {}; state.progress[pkey] = state.progress[pkey] || { passed: {} }; return state.progress[pkey]; }
+function progFor(pkey) {
+  state.progress = state.progress || {};
+  const p = state.progress[pkey] || (state.progress[pkey] = {});
+  p.passed = p.passed || {};    // 背单词 掌握
+  p.qpassed = p.qpassed || {};  // 测验 掌握
+  return p;
+}
+function countProg(pkey, which) {
+  return state.progress && state.progress[pkey] && state.progress[pkey][which]
+    ? Object.keys(state.progress[pkey][which]).length : 0;
+}
+/* 背单词进度 */
 function isPassed(pkey, en) { return !!progFor(pkey).passed[en.toLowerCase()]; }
 function setPassed(pkey, en) { progFor(pkey).passed[en.toLowerCase()] = 1; }
-function passedCount(pkey) { return state.progress && state.progress[pkey] ? Object.keys(state.progress[pkey].passed).length : 0; }
+function passedCount(pkey) { return countProg(pkey, "passed"); }
+/* 测验进度（独立） */
+function isQPassed(pkey, en) { return !!progFor(pkey).qpassed[en.toLowerCase()]; }
+function setQPassed(pkey, en) { progFor(pkey).qpassed[en.toLowerCase()] = 1; }
+function qpassedCount(pkey) { return countProg(pkey, "qpassed"); }
 
 /* ---------- voices / speech ---------- */
 function loadVoices() {
@@ -526,14 +547,14 @@ function showDeckList() {
   $("#newDeckPanel").classList.remove("hidden");
   renderDeckList();
 }
-function deckCard({ icon, name, total, learned, badge, onclick }) {
+function deckCard({ icon, name, total, learned, qlearned, badge, onclick }) {
   const el = document.createElement("div");
   el.className = "deck";
   const pct = total ? Math.round(learned / total * 100) : 0;
   el.innerHTML = `<div class="dico">${icon}</div>
     <div class="dbody">
       <div class="dname"></div>
-      <div class="dmeta">${total} 个单词 · 已掌握 ${learned}（${pct}%）</div>
+      <div class="dmeta">${total} 词 · 🎯背 ${learned} · 📝测 ${qlearned}</div>
       <div class="dbar"><i style="width:${pct}%"></i></div>
     </div>
     <div class="darrow">›</div>`;
@@ -546,11 +567,13 @@ function renderDeckList() {
   const box = $("#deckList"); box.innerHTML = "";
   EXAM_META.forEach(m => {
     box.appendChild(deckCard({ icon: m.icon, name: m.name, total: examWords(m.key).length,
-      learned: passedCount("exam:" + m.key), badge: "考试词库", onclick: () => openDeck("exam", m.key) }));
+      learned: passedCount("exam:" + m.key), qlearned: qpassedCount("exam:" + m.key),
+      badge: "考试词库", onclick: () => openDeck("exam", m.key) }));
   });
   state.decks.forEach(d => {
     box.appendChild(deckCard({ icon: "📚", name: d.name, total: d.words.length,
-      learned: passedCount("deck:" + d.id), onclick: () => openDeck("user", d.id) }));
+      learned: passedCount("deck:" + d.id), qlearned: qpassedCount("deck:" + d.id),
+      onclick: () => openDeck("user", d.id) }));
   });
 }
 $("#newDeckBtn").onclick = () => {
@@ -591,10 +614,13 @@ function openDeck(kind, id) {
 $("#deckBack").onclick = showDeckList;
 
 function updateDeckProgress() {
-  const total = curWords.length, learned = passedCount(curPKey);
-  const pct = total ? Math.round(learned / total * 100) : 0;
-  $("#deckProgressText").textContent = `已掌握 ${learned} / ${total}（${pct}%）`;
-  $("#deckProgressBar").style.width = pct + "%";
+  const total = curWords.length;
+  const s = passedCount(curPKey), q = qpassedCount(curPKey);
+  const sp = total ? Math.round(s / total * 100) : 0, qp = total ? Math.round(q / total * 100) : 0;
+  $("#studyProgText").textContent = `${s} / ${total}（${sp}%）`;
+  $("#studyProgBar").style.width = sp + "%";
+  $("#quizProgText").textContent = `${q} / ${total}（${qp}%）`;
+  $("#quizProgBar").style.width = qp + "%";
 }
 function renderBrowse() {
   $("#browseTotal").textContent = curWords.length;
@@ -667,18 +693,21 @@ $("#deleteDeckBtn").onclick = () => {
   save(); showDeckList();
 };
 
-/* ================= QUIZ (typing) ================= */
+/* ================= QUIZ (typing, round-based, own progress) ================= */
 let quiz = null;
 
 function openQuiz() {
   $("#deckDetail").classList.add("hidden");
+  $("#studyView").classList.add("hidden");
   $("#quizView").classList.remove("hidden");
   $("#quizTitle").textContent = "测验 · " + curName;
   $("#quizSetup").classList.remove("hidden");
   $("#quizPlay").classList.add("hidden");
   $("#quizResult").classList.add("hidden");
-  const n = curWords.filter(w => w.zh).length;
-  $("#quizAvail").textContent = n < 1 ? "⚠️ 这个分组还没有带中文的单词。" : `本分组可测 ${n} 个单词（题量选“全部”时最多测 100 个）。`;
+  const n = curWords.filter(w => w.zh && !isQPassed(curPKey, w.en)).length;
+  $("#quizAvail").textContent = n < 1
+    ? "🎉 这个分组测验已全部通过！可点「重置测验」重来。"
+    : `测验还剩 ${n} 个未通过。`;
   $("#startQuizBtn").disabled = n < 1;
 }
 $("#deckQuizBtn").onclick = openQuiz;
@@ -689,31 +718,37 @@ let quizDir = "en2zh";
 $("#dirSeg").querySelectorAll("button").forEach(b => {
   b.onclick = () => { $("#dirSeg").querySelectorAll("button").forEach(x => x.classList.remove("on")); b.classList.add("on"); quizDir = b.dataset.dir; };
 });
+function pickDir() { return quizDir === "mix" ? (Math.random() < .5 ? "en2zh" : "zh2en") : quizDir; }
 
 function shuffle(a) { const r = a.slice(); for (let i = r.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [r[i], r[j]] = [r[j], r[i]]; } return r; }
 
+// start a fresh batch of not-yet-quiz-passed words
 function startQuiz() {
-  const pool = curWords.filter(w => w.zh);
-  if (!pool.length) return;
-  let count = parseInt($("#qCount").value, 10);
-  let queue = shuffle(pool);
-  if (count > 0) queue = queue.slice(0, count);
-  else queue = queue.slice(0, 100); // cap "全部" for huge exam decks
-  queue = queue.map(w => ({ w, dir: quizDir === "mix" ? (Math.random() < .5 ? "en2zh" : "zh2en") : quizDir }));
-  quiz = { queue, i: 0, correct: 0, wrong: [], answered: false };
+  const size = parseInt($("#qBatch").value, 10);
+  const pool = curWords.filter(w => w.zh && !isQPassed(curPKey, w.en));
+  if (!pool.length) { alert("🎉 这个分组测验已全部通过！可点「重置测验」重来。"); return; }
+  const batch = shuffle(pool).slice(0, size).map(w => ({ w, dir: pickDir() }));
+  startRound(batch, false);
+}
+// run one round over the given entries [{w,dir}]
+function startRound(entries, isRetry) {
+  quiz = { queue: entries, i: 0, correct: 0, wrong: [], roundSize: entries.length, isRetry, answered: false };
   $("#quizSetup").classList.add("hidden");
   $("#quizResult").classList.add("hidden");
   $("#quizPlay").classList.remove("hidden");
   showQ();
 }
 $("#startQuizBtn").onclick = startQuiz;
-$("#againBtn").onclick = startQuiz;
+$("#againBtn").onclick = () => {
+  if (quiz && quiz.retryPool && quiz.retryPool.length) startRound(quiz.retryPool.map(e => ({ w: e.w, dir: e.dir })), true);
+  else startQuiz();
+};
 
 function showQ() {
   const { queue, i } = quiz;
   const { w, dir } = queue[i];
   quiz.answered = false;
-  $("#qProgress").textContent = `第 ${i + 1} / ${queue.length} 题`;
+  $("#qProgress").textContent = `第 ${i + 1} / ${queue.length} 题` + (quiz.isRetry ? "（错词重测）" : "");
   $("#qScore").textContent = `✅ ${quiz.correct}`;
   $("#qBar").style.width = (i / queue.length * 100) + "%";
   $("#qFeedback").textContent = ""; $("#qFeedback").className = "feedback";
@@ -740,7 +775,6 @@ function normZh(s) { return (s || "").replace(/[\s（）()【】\[\]。，,、�
 
 function judge(input, w, dir) {
   if (dir === "zh2en") return normEn(input) === normEn(w.en) && normEn(input) !== "";
-  // en2zh: accept if matches whole or any sense separated by ；;/，,、
   const parts = w.zh.split(/[；;\/，,、]/).map(normZh).filter(Boolean);
   const ni = normZh(input);
   if (!ni) return false;
@@ -761,41 +795,62 @@ function submitAnswer() {
   if (right) markResult(true, "✅ 答对了！");
   else {
     $("#qFeedback").textContent = "❌ 不太对"; $("#qFeedback").className = "feedback no";
-    $("#qGradeRow").classList.remove("hidden"); // let user override (typing is fuzzy)
-    $("#qNextRow").classList.remove("hidden");
-    quiz.pendingWrong = w;
+    $("#qGradeRow").classList.remove("hidden"); // typing is fuzzy → let user override
   }
 }
+// mark the CURRENT question; correct → quiz-passed (掌握); wrong → into retry pool
 function markResult(isRight, msg) {
+  const cur = quiz.queue[quiz.i];
   $("#qFeedback").textContent = msg; $("#qFeedback").className = "feedback " + (isRight ? "ok" : "no");
   $("#qGradeRow").classList.add("hidden");
   $("#qNextRow").classList.remove("hidden");
-  if (isRight) quiz.correct++; else if (quiz.pendingWrong) quiz.wrong.push(quiz.pendingWrong);
-  quiz.pendingWrong = null;
+  if (isRight) { quiz.correct++; setQPassed(curPKey, cur.w.en); save(); }
+  else { quiz.wrong.push(cur); }
   $("#qScore").textContent = `✅ ${quiz.correct}`;
 }
 $("#qSubmitBtn").onclick = submitAnswer;
-$("#qInput").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); if (quiz && quiz.answered) nextQ(); else submitAnswer(); } });
+$("#qInput").addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  e.preventDefault();
+  if (!quiz) return;
+  const canNext = !$("#qNextRow").classList.contains("hidden");
+  if (quiz.answered && canNext) nextQ();       // graded → advance
+  else if (!quiz.answered) submitAnswer();      // still on question → submit
+  // wrong-but-not-graded: wait for 算我对/记错了
+});
 $("#markRight").onclick = () => markResult(true, "✅ 算对！");
-$("#markWrong").onclick = () => markResult(false, "❌ 记错了，稍后复习");
+$("#markWrong").onclick = () => markResult(false, "❌ 记错了，进入再来一次");
 
 function nextQ() {
   quiz.i++;
-  if (quiz.i >= quiz.queue.length) return finishQuiz();
+  if (quiz.i >= quiz.queue.length) return finishRound();
   showQ();
 }
 $("#qNextBtn").onclick = nextQ;
 
-function finishQuiz() {
+function finishRound() {
   $("#quizPlay").classList.add("hidden");
   $("#quizResult").classList.remove("hidden");
-  const total = quiz.queue.length, c = quiz.correct, pct = Math.round(c / total * 100);
+  updateDeckProgress();
+  const c = quiz.correct, total = quiz.roundSize, wrong = quiz.wrong;
   $("#rScore").textContent = `${c} / ${total}`;
-  $("#rMsg").textContent = pct === 100 ? "🎉 满分！太强了！" : pct >= 80 ? "👏 很不错，快掌握了！" : pct >= 60 ? "🙂 还行，再多练几次～" : "💪 别灰心，多跟读几遍再来！";
   const wl = $("#rWrong"); wl.innerHTML = "";
-  if (quiz.wrong.length) {
-    const t = document.createElement("div"); t.style.cssText = "color:var(--muted);font-size:13px;margin:14px 0 8px;"; t.textContent = "需要再复习的词（点击朗读）："; wl.appendChild(t);
-    quiz.wrong.forEach(w => { const r = document.createElement("div"); r.className = "wl"; r.innerHTML = `<b></b><span></span>`; r.querySelector("b").textContent = w.en; r.querySelector("span").textContent = w.zh; r.onclick = () => speak(w.en); wl.appendChild(r); });
+  if (wrong.length) {
+    quiz.retryPool = wrong.slice();
+    $("#rMsg").textContent = `还有 ${wrong.length} 个没答对，「再来一次」只测这些，答对才算通过 ✍️`;
+    $("#againBtn").textContent = `🔁 再来一次（错的 ${wrong.length} 个）`;
+    const t = document.createElement("div"); t.style.cssText = "color:var(--muted);font-size:13px;margin:14px 0 8px;";
+    t.textContent = "错词（点击朗读）："; wl.appendChild(t);
+    wrong.forEach(e => {
+      const r = document.createElement("div"); r.className = "wl";
+      r.innerHTML = `<b></b><span></span>`;
+      r.querySelector("b").textContent = e.w.en; r.querySelector("span").textContent = e.w.zh;
+      r.onclick = () => speak(e.w.en); wl.appendChild(r);
+    });
+  } else {
+    quiz.retryPool = null;
+    $("#rMsg").textContent = "🎉 这组全部答对，已加入「测验已掌握」！";
+    $("#againBtn").textContent = "➡️ 再测新的一组";
   }
 }
 
@@ -857,11 +912,16 @@ $("#sAgainBtn").onclick = () => judgeCard(false);
 $("#studyBack").onclick = () => openDeck(curKind, curDeckId);
 $("#sdBackBtn").onclick = () => openDeck(curKind, curDeckId);
 $("#sdMoreBtn").onclick = () => { $("#studyDone").classList.add("hidden"); startStudy(); };
-$("#resetProgBtn").onclick = () => {
-  if (!confirm(`确定重置「${curName}」的背诵进度？已掌握记录会清空。`)) return;
-  if (state.progress) delete state.progress[curPKey];
+$("#resetStudyBtn").onclick = () => {
+  if (!confirm(`确定重置「${curName}」的背单词进度？（不影响测验进度）`)) return;
+  if (state.progress && state.progress[curPKey]) state.progress[curPKey].passed = {};
   save(); updateDeckProgress();
   if (curKind === "exam") renderBrowse();
+};
+$("#resetQuizBtn").onclick = () => {
+  if (!confirm(`确定重置「${curName}」的测验进度？（不影响背单词进度）`)) return;
+  if (state.progress && state.progress[curPKey]) state.progress[curPKey].qpassed = {};
+  save(); updateDeckProgress();
 };
 
 /* ================= SENTENCES ================= */
