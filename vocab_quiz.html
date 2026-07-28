@@ -148,6 +148,16 @@
   #essayQ .qen { font-size: 15px; font-weight: 700; line-height: 1.5; }
   .emeta { color: var(--muted); font-size: 13px; margin-top: 3px; }
 
+  /* clickable words in sentences */
+  .stext .snum { color: var(--muted); }
+  .stext .w { cursor: pointer; border-radius: 4px; }
+  .stext .w:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+  .stext .w.on { background: rgba(108,140,255,.25); color: var(--text); }
+  .wmean { margin-top: 10px; padding: 9px 12px; background: #0c1030;
+    border: 1px solid rgba(108,140,255,.35); border-radius: 10px; font-size: 14px; line-height: 1.5; color: var(--text); }
+  .wmean b { color: var(--accent-2); margin-right: 8px; }
+  .wmean.hidden { display: none; }
+
   /* quiz */
   .quizTop { display:flex; justify-content: space-between; align-items:center; color: var(--muted); font-size: 14px; }
   .bar { height: 6px; border-radius: 4px; background: #0c1030; overflow: hidden; margin: 10px 0 22px; }
@@ -383,7 +393,7 @@
         <button id="readSentsBtn" class="ghost">🔊 全部跟读</button>
         <button id="stopBtn2" class="ghost">⏹ 停止</button>
       </div>
-      <div class="hint">句子较长，点每句前的 ▶ 单独朗读跟读最方便。</div>
+      <div class="hint">添加时会自动按「一句一行」拆分。点每句前的 ▶ 单独朗读；<b>点句子里的任意单词</b>即可查看该词意思。</div>
     </div>
   </div>
 
@@ -1105,6 +1115,49 @@ $("#addEssayBtn").onclick = () => {
 
 
 /* ================= SENTENCES ================= */
+/* ---- word lookup dict (built from embedded exam + 脑洞部长 words) ---- */
+let WORD_DICT = null;
+function buildDict() {
+  if (WORD_DICT) return WORD_DICT;
+  WORD_DICT = {};
+  const add = (en, zh) => { const k = (en || "").toLowerCase().trim(); if (k && !WORD_DICT[k]) WORD_DICT[k] = zh; };
+  if (window.EXAM_DECKS) for (const key in window.EXAM_DECKS) window.EXAM_DECKS[key].forEach(p => add(p[0], p[1]));
+  [PRESET, DAY34, DAY35].forEach(arr => arr && arr.forEach(p => add(p[0], p[1])));
+  return WORD_DICT;
+}
+function lookupWord(w) {
+  const d = buildDict();
+  const k = (w || "").toLowerCase().replace(/[^a-z'\-]/g, "");
+  if (!k) return null;
+  if (d[k]) return d[k];
+  const tries = [];
+  if (k.endsWith("ies")) tries.push(k.slice(0, -3) + "y");
+  if (k.endsWith("es")) tries.push(k.slice(0, -2));
+  if (k.endsWith("s")) tries.push(k.slice(0, -1));
+  if (k.endsWith("ing")) tries.push(k.slice(0, -3), k.slice(0, -3) + "e");
+  if (k.endsWith("ed")) tries.push(k.slice(0, -2), k.slice(0, -1));
+  if (k.endsWith("er")) tries.push(k.slice(0, -2), k.slice(0, -1));
+  if (k.endsWith("est")) tries.push(k.slice(0, -3), k.slice(0, -2));
+  if (k.endsWith("ly")) tries.push(k.slice(0, -2));
+  for (const t of tries) if (d[t]) return d[t];
+  return null;
+}
+async function showWordMeaning(meanEl, spanEl, word) {
+  const box = meanEl.parentNode;
+  box.querySelectorAll(".stext .w.on").forEach(x => x.classList.remove("on"));
+  if (spanEl) spanEl.classList.add("on");
+  meanEl.classList.remove("hidden");
+  const setText = (t) => { meanEl.innerHTML = ""; const b = document.createElement("b"); b.textContent = word; meanEl.appendChild(b); meanEl.appendChild(document.createTextNode(t)); };
+  const local = lookupWord(word);
+  if (local) { setText(local); return; }
+  setText("查询中…");
+  try { setText(await translate(word)); }
+  catch { setText("词库未收录，联网后可自动翻译"); }
+}
+function splitSentences(t) {
+  const m = t.match(/[^.!?。！？…]+[.!?。！？…]+["'\)\]”’]*|\S[^.!?。！？…]*$/g);
+  return m ? m.map(s => s.trim()).filter(Boolean) : (t.trim() ? [t.trim()] : []);
+}
 function renderSents() {
   const list = $("#sentList");
   $("#sentEmpty").classList.toggle("hidden", state.sentences.length > 0);
@@ -1115,18 +1168,31 @@ function renderSents() {
     const top = document.createElement("div"); top.className = "stop";
     const play = document.createElement("button"); play.className = "play"; play.textContent = speakingId === it.id ? "❚❚" : "▶";
     play.setAttribute("aria-label", "朗读句子"); play.onclick = () => speak(it.en, it.id, renderSents);
-    const txt = document.createElement("div"); txt.className = "stext"; txt.textContent = (i + 1) + ". " + it.en;
+    const txt = document.createElement("div"); txt.className = "stext";
+    const num = document.createElement("span"); num.className = "snum"; num.textContent = (i + 1) + ". "; txt.appendChild(num);
     const rm = document.createElement("button"); rm.className = "rm"; rm.textContent = "✕";
     rm.onclick = () => { state.sentences = state.sentences.filter(s => s.id !== it.id); save(); renderSents(); };
     top.appendChild(play); top.appendChild(txt); top.appendChild(rm);
     li.appendChild(top);
     if (it.zh) { const z = document.createElement("div"); z.className = "szh"; z.textContent = it.zh; li.appendChild(z); }
+    const mean = document.createElement("div"); mean.className = "wmean hidden";
+    it.en.split(/(\b[A-Za-z][A-Za-z'\u2019-]*\b)/g).forEach(tok => {
+      if (/^[A-Za-z]/.test(tok) && /[A-Za-z]/.test(tok)) {
+        const s = document.createElement("span"); s.className = "w"; s.textContent = tok;
+        s.onclick = () => showWordMeaning(mean, s, tok);
+        txt.appendChild(s);
+      } else txt.appendChild(document.createTextNode(tok));
+    });
+    li.appendChild(mean);
     list.appendChild(li);
   });
 }
 $("#addSentBtn").onclick = () => {
   const lines = $("#sentInput").value.split("\n").map(s => s.trim()).filter(Boolean);
-  lines.forEach(line => { const { en, zh } = parseLine(line); if (en) state.sentences.push({ id: uid(), en, zh }); });
+  lines.forEach(line => {
+    if (/[=|]/.test(line)) { const { en, zh } = parseLine(line); if (en) state.sentences.push({ id: uid(), en, zh }); }
+    else splitSentences(line).forEach(s => state.sentences.push({ id: uid(), en: s, zh: "" }));
+  });
   $("#sentInput").value = ""; save(); renderSents();
 };
 $("#readSentsBtn").onclick = () => readMany(state.sentences, renderSents);
