@@ -427,6 +427,7 @@ function uid() { return "x" + (idc++).toString(36) + Date.now().toString(36).sli
 /* ---------- state ---------- */
 let state = loadState();
 ensureSeedDecks();
+repairSeedDecks();
 let voices = [];
 let speakingId = null;
 
@@ -450,6 +451,23 @@ function ensureSeedDecks() {
     state.seeded.push(sd.key); changed = true;
   });
   if (changed) save();
+}
+/* 一次性补全：把内置分组里被误删的单词补回来（每个补丁号只跑一次，之后可正常删除）。 */
+function repairSeedDecks() {
+  const PATCH = "backfill-2026-07-day3x";
+  state.repaired = state.repaired || [];
+  if (state.repaired.includes(PATCH)) return;
+  SEED_DECKS.forEach(sd => {
+    const deck = state.decks.find(d => d.name === sd.name);
+    if (!deck) return;
+    sd.words.forEach(([en, zh]) => {
+      if (!deck.words.some(w => w.en.toLowerCase() === en.toLowerCase())) {
+        deck.words.push({ id: uid(), en, zh });
+      }
+    });
+  });
+  state.repaired.push(PATCH);
+  save();
 }
 function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch {} }
 
