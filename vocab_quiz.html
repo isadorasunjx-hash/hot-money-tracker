@@ -137,6 +137,17 @@
   li.sent .stext { flex:1 1 auto; font-size: 17px; line-height: 1.55; word-break: break-word; }
   li.sent .szh { color: var(--accent-2); font-size: 14px; margin-top: 8px; line-height:1.5; }
 
+  /* essays / 范文 */
+  .epara { background: var(--card-2); border: 1px solid rgba(255,255,255,.06); border-radius: 14px;
+    padding: 14px 16px; margin-bottom: 12px; display:flex; gap: 12px; align-items:flex-start; }
+  .epara.speaking { border-color: var(--accent-2); box-shadow: 0 0 0 2px rgba(84,224,199,.25) inset; }
+  .epara .pbody { flex:1 1 auto; min-width:0; }
+  .epara .pen { font-size: 16px; line-height: 1.6; word-break: break-word; }
+  .epara .pzh, #essayQ .qzh { color: var(--accent-2); font-size: 14px; line-height: 1.55; margin-top: 8px; cursor: pointer; }
+  .epara .pzh.masked, #essayQ .qzh.masked { color: var(--muted); font-style: italic; opacity: .8; }
+  #essayQ .qen { font-size: 15px; font-weight: 700; line-height: 1.5; }
+  .emeta { color: var(--muted); font-size: 13px; margin-top: 3px; }
+
   /* quiz */
   .quizTop { display:flex; justify-content: space-between; align-items:center; color: var(--muted); font-size: 14px; }
   .bar { height: 6px; border-radius: 4px; background: #0c1030; overflow: hidden; margin: 10px 0 22px; }
@@ -180,6 +191,7 @@
   <div class="tabs">
     <div class="tab active" data-view="words">📖 单词</div>
     <div class="tab" data-view="sentences">🗣 句子跟读</div>
+    <div class="tab" data-view="essays">✍️ 范文</div>
   </div>
 
   <div class="voicebar">
@@ -375,6 +387,34 @@
     </div>
   </div>
 
+
+  <!-- ================= ESSAYS (范文背诵) ================= -->
+  <div id="view-essays" class="hidden">
+    <div id="essayList"></div>
+    <div class="panel" id="essayAddPanel">
+      <label class="small">➕ 添加自己的范文（第一行是标题；正文每段之间空一行；每段可写「English === 中文」附翻译）</label>
+      <textarea id="essayInput" style="min-height:120px" placeholder="My Hometown&#10;&#10;I come from a small town in the north. === 我来自北方的一个小镇。&#10;&#10;It is famous for its food and friendly people. === 它以美食和友善的人们而闻名。"></textarea>
+      <div class="row"><button id="addEssayBtn" class="grow">保存范文</button></div>
+    </div>
+    <div id="essayReader" class="hidden">
+      <div class="backbar">
+        <button class="back sm" id="essayBack">← 返回</button>
+        <h2 id="essayTitle">范文</h2>
+      </div>
+      <div class="panel">
+        <div class="row" style="margin-top:0">
+          <button id="essayReadAll" class="grow">🔊 全文朗读</button>
+          <button id="essayStop" class="ghost">⏹ 停止</button>
+          <button id="essayToggleZh" class="ghost">👁 全部显示中文</button>
+        </div>
+        <div class="hint">中文默认隐藏 —— 点那行「👀 点击查看中文」即可显示该段意思，方便自测背诵；点每段前的 ▶ 单独朗读。</div>
+      </div>
+      <div id="essayQ" class="panel" style="display:none"></div>
+      <div id="essayBody"></div>
+      <div class="row"><button class="danger sm" id="essayDelete" style="margin-left:auto; display:none">🗑 删除这篇</button></div>
+    </div>
+  </div>
+
   <footer>脑洞部长 · 背单词 · 浏览器语音合成 (Web Speech API) · 数据保存在本地浏览器</footer>
 </div>
 
@@ -559,9 +599,11 @@ document.querySelectorAll(".tab").forEach(t => {
     const v = t.dataset.view;
     $("#view-words").classList.toggle("hidden", v !== "words");
     $("#view-sentences").classList.toggle("hidden", v !== "sentences");
+    $("#view-essays").classList.toggle("hidden", v !== "essays");
     speechSynthesis.cancel();
     if (v === "words") showDeckList();
     if (v === "sentences") renderSents();
+    if (v === "essays") renderEssays();
   };
 });
 
@@ -967,6 +1009,100 @@ $("#resetQuizBtn").onclick = () => {
   if (state.progress && state.progress[curPKey]) state.progress[curPKey].qpassed = {};
   save(); updateDeckProgress();
 };
+
+
+/* ================= ESSAYS (范文背诵) ================= */
+const ESSAYS = [{"title": "University Education Should Be Free", "type": "观点类 Opinion", "q": ["Some people think that governments should make university education free for all citizens. To what extent do you agree or disagree?", "有人认为政府应让所有公民免费上大学。你在多大程度上同意或不同意？"], "paras": [["It is sometimes argued that higher education ought to be funded entirely by the state, so that anyone can attend university without paying tuition fees. I largely agree with this view, because free access to university benefits both individuals and society as a whole, although a completely cost-free system does carry some risks.", "有人认为高等教育应完全由国家出资，让任何人都能免费上大学。我基本同意这一观点，因为免费的大学教育对个人和整个社会都有好处，尽管完全免费的制度确实存在一些风险。"], ["The most important argument in favour of free university education is that it promotes equality of opportunity. When tuition is expensive, talented students from low-income families are often forced to abandon their studies, and the country loses skilled workers it badly needs. If the government covers these costs, a person's future is determined by ability and effort rather than by the wealth of their parents.", "支持免费大学教育最重要的理由是它能促进机会平等。当学费高昂时，来自低收入家庭的优秀学生常被迫放弃学业，国家也因此失去急需的技术人才。如果政府承担这些费用，一个人的前途将取决于能力和努力，而非父母的财富。"], ["In addition, a well-educated population brings long-term economic and social benefits. Graduates tend to earn higher salaries, pay more tax, and are less likely to rely on state welfare. They also drive innovation in fields such as medicine and technology. From this perspective, free tuition is not a cost but an investment that a government eventually recovers.", "此外，受过良好教育的国民会带来长期的经济和社会效益。毕业生往往收入更高、缴纳更多税款，也更少依赖国家福利。他们还能推动医学、科技等领域的创新。从这个角度看，免费学费并非一种支出，而是一项政府最终能够收回的投资。"], ["In conclusion, although some people worry that free education may waste public money, I believe the advantages clearly outweigh the drawbacks. By making universities free, governments can build a fairer and more prosperous society.", "总之，尽管有人担心免费教育可能浪费公共资金，但我认为其好处明显大于弊端。通过让大学免费，政府能够建立一个更公平、更繁荣的社会。"]]}, {"title": "Online Study vs the Traditional Classroom", "type": "讨论类 Discussion", "q": ["Some people prefer to study online at home, while others believe that studying in a traditional classroom is more effective. Discuss both views and give your own opinion.", "有人喜欢在家在线学习，也有人认为传统教室学习更有效。讨论双方观点并给出你自己的看法。"], "paras": [["The rapid growth of the internet has made it possible to study almost any subject from home. While some learners favour the flexibility of online courses, others insist that face-to-face teaching produces better results. This essay will examine both sides before giving my own opinion.", "互联网的迅猛发展使人们几乎可以在家学习任何科目。一些学习者青睐在线课程的灵活性，另一些人则坚持认为面授能取得更好的效果。本文将在给出我个人观点之前，先讨论双方的看法。"], ["On the one hand, online study offers convenience that a physical classroom cannot match. Students can attend lessons at any time and from any place, which is ideal for those who work or live far from a college. Moreover, digital platforms allow learners to pause, replay, and review material at their own pace, so they can master difficult ideas more thoroughly.", "一方面，在线学习提供了实体教室无法比拟的便利。学生可以随时随地上课，这对上班族或住得离学校很远的人来说非常理想。而且，数字平台让学习者可以按自己的节奏暂停、重播和复习内容，从而更透彻地掌握难点。"], ["On the other hand, traditional classrooms provide a level of interaction that many students need. A teacher can notice confusion immediately and adjust the explanation, while discussion with classmates encourages deeper thinking. The fixed timetable and the presence of others also help students stay disciplined, something that easily disappears when studying alone at home.", "另一方面，传统教室提供了许多学生所需的互动。老师能立刻察觉学生的困惑并调整讲解，而与同学的讨论则能激发更深入的思考。固定的课表和他人在场也有助于学生保持自律，而这种自律在独自居家学习时很容易消失。"], ["In my opinion, neither approach is perfect on its own. The most effective solution is a blended model that combines the flexibility of online lessons with the support of occasional classroom teaching. In this way, students can enjoy the benefits of both methods.", "在我看来，两种方式单独来看都不完美。最有效的方案是一种混合模式，把在线课程的灵活性与偶尔面授的支持结合起来。这样，学生就能兼得两种方法的好处。"]]}, {"title": "Working From Home", "type": "利弊类 Adv/Disadv", "q": ["More and more people are working from home instead of in an office. Do the advantages of this development outweigh the disadvantages?", "越来越多的人在家工作而非去办公室。这一趋势的利是否大于弊？"], "paras": [["In recent years it has become increasingly common for employees to carry out their jobs from home rather than travelling to an office. Although this shift brings certain problems, I believe its benefits are more significant.", "近年来，员工在家工作而非通勤到办公室的现象越来越普遍。尽管这一转变带来了一些问题，但我认为其益处更为显著。"], ["The clearest advantage of working from home is the time and money that employees save. Without a daily commute, workers gain several extra hours each week and avoid the stress of crowded transport. This freedom often leads to a healthier work-life balance, as parents in particular can spend more time with their families. Companies benefit too, since they can reduce spending on office space and electricity.", "在家工作最明显的好处是员工节省了时间和金钱。没有了每天的通勤，员工每周能多出好几个小时，也避免了拥挤交通带来的压力。这种自由往往带来更健康的工作与生活平衡，尤其是父母能有更多时间陪伴家人。公司也从中受益，因为可以减少在办公空间和电费上的开支。"], ["Nevertheless, this arrangement has drawbacks. Some employees find it hard to concentrate at home, where family members and household chores are constant distractions. Others feel isolated and miss the sense of teamwork that an office naturally creates. There is also the risk that the line between work and private life becomes blurred, so that people end up working longer hours than before.", "然而，这种安排也有弊端。有些员工发现自己在家难以集中注意力，家人和家务是持续的干扰。另一些人感到孤立，怀念办公室自然形成的团队氛围。此外还有一个风险：工作与私人生活的界限变得模糊，导致人们最终工作时间比以前更长。"], ["On balance, while working from home is not suitable for everyone, its advantages in terms of flexibility, cost and well-being outweigh the disadvantages. With clear routines and good communication, most of the problems can be managed effectively.", "总体而言，虽然在家工作并不适合所有人，但它在灵活性、成本和幸福感方面的好处大于弊端。只要有清晰的作息和良好的沟通，大多数问题都能得到有效解决。"]]}, {"title": "Pollution and Waste", "type": "问题解决类 Problem/Solution", "q": ["Environmental problems such as pollution and waste are becoming more and more serious. What are the main causes of these problems, and what measures can be taken to solve them?", "污染和废弃物等环境问题日益严重。这些问题的主要成因是什么？可以采取哪些措施解决？"], "paras": [["There is no doubt that the natural environment is under growing pressure from pollution and waste. In this essay I will outline the principal causes of this situation and suggest some practical measures to address it.", "毫无疑问，自然环境正承受着污染和废弃物带来的日益增大的压力。本文将概述造成这一状况的主要原因，并提出一些切实可行的应对措施。"], ["The main cause of environmental damage is the modern lifestyle built around constant consumption. Factories release harmful gases while producing the goods that people demand, and a heavy reliance on cars and cheap air travel adds enormous quantities of carbon to the atmosphere. At the same time, a \"throwaway\" culture means that vast amounts of plastic and food are discarded every day, much of which ends up polluting land and oceans.", "环境破坏的主要原因是建立在持续消费之上的现代生活方式。工厂在生产人们所需商品的同时排放有害气体，而对汽车和廉价航空的严重依赖又向大气中排放了大量碳。与此同时，“用完即弃”的文化意味着每天都有大量塑料和食物被丢弃，其中许多最终污染了土地和海洋。"], ["Fortunately, several steps can reduce this harm. Governments should invest in clean energy such as solar and wind power, and introduce stricter laws to limit factory emissions. Individuals also have a part to play: by recycling, using public transport, and cutting unnecessary waste, ordinary people can lower their impact. Education is equally important, as citizens who understand the consequences of their choices are more likely to act responsibly.", "幸运的是，有若干措施可以减轻这种危害。政府应投资太阳能、风能等清洁能源，并出台更严格的法律来限制工厂排放。个人同样能发挥作用：通过回收利用、使用公共交通、减少不必要的浪费，普通人就能降低自己的影响。教育也同样重要，因为了解自身选择后果的公民更有可能负责任地行动。"], ["In conclusion, pollution and waste result mainly from industrial activity and wasteful habits. Only by combining government action with individual responsibility can we hope to protect the environment for future generations.", "总之，污染和废弃物主要源于工业活动和浪费的习惯。只有把政府行动与个人责任结合起来，我们才有望为子孙后代保护好环境。"]]}];
+
+let curEssay = null;
+function getEssay(ref) {
+  if (ref[0] === "b") { const e = ESSAYS[+ref.slice(1)]; return e ? Object.assign({}, e, { builtin: true }) : null; }
+  const e = (state.essays || []).find(x => x.id === ref.slice(1)); return e ? Object.assign({}, e, { builtin: false }) : null;
+}
+function renderEssays() {
+  $("#essayReader").classList.add("hidden");
+  $("#essayList").classList.remove("hidden");
+  $("#essayAddPanel").classList.remove("hidden");
+  renderEssayList();
+}
+function renderEssayList() {
+  const box = $("#essayList"); box.innerHTML = "";
+  const rows = [];
+  ESSAYS.forEach((e, i) => rows.push({ ref: "b" + i, title: e.title, type: e.type, n: e.paras.length }));
+  (state.essays || []).forEach(e => rows.push({ ref: "u" + e.id, title: e.title, type: "我的范文", n: e.paras.length }));
+  rows.forEach(it => {
+    const el = document.createElement("div"); el.className = "deck";
+    el.innerHTML = `<div class="dico">✍️</div><div class="dbody"><div class="dname"></div><div class="emeta">${it.n} 段 · ${it.type || "范文"}</div></div><div class="darrow">›</div>`;
+    el.querySelector(".dname").textContent = it.title;
+    el.onclick = () => openEssay(it.ref);
+    box.appendChild(el);
+  });
+}
+const ZH_MASK = "👀 点击查看中文";
+function bindReveal(el, zh) {
+  el.dataset.zh = zh; el.textContent = ZH_MASK; el.classList.add("masked");
+  el.onclick = () => {
+    if (el.classList.contains("masked")) { el.classList.remove("masked"); el.textContent = el.dataset.zh; }
+    else { el.classList.add("masked"); el.textContent = ZH_MASK; }
+  };
+}
+function openEssay(ref) {
+  const e = getEssay(ref); if (!e) return;
+  curEssay = ref;
+  $("#essayList").classList.add("hidden");
+  $("#essayAddPanel").classList.add("hidden");
+  $("#essayReader").classList.remove("hidden");
+  $("#essayToggleZh").textContent = "👁 全部显示中文";
+  $("#essayTitle").textContent = e.title;
+  const q = $("#essayQ");
+  if (e.q && e.q[0]) { q.style.display = "block"; q.innerHTML = `<div class="qen"></div><div class="qzh"></div>`; q.querySelector(".qen").textContent = "📝 " + e.q[0]; if (e.q[1]) bindReveal(q.querySelector(".qzh"), e.q[1]); else q.querySelector(".qzh").remove(); }
+  else q.style.display = "none";
+  $("#essayDelete").style.display = e.builtin ? "none" : "block";
+  renderEssayBody(e);
+}
+function renderEssayBody(e) {
+  const body = $("#essayBody"); body.innerHTML = "";
+  e.paras.forEach((p, i) => {
+    const en = p[0], zh = p[1] || "";
+    const d = document.createElement("div"); d.className = "epara" + (speakingId === "ep" + i ? " speaking" : "");
+    const play = document.createElement("button"); play.className = "play";
+    play.textContent = speakingId === "ep" + i ? "❚❚" : "▶";
+    play.setAttribute("aria-label", "朗读这段");
+    play.onclick = () => speak(en, "ep" + i, () => renderEssayBody(e));
+    const pb = document.createElement("div"); pb.className = "pbody";
+    const pen = document.createElement("div"); pen.className = "pen"; pen.textContent = en; pb.appendChild(pen);
+    if (zh) { const pzh = document.createElement("div"); pzh.className = "pzh"; bindReveal(pzh, zh); pb.appendChild(pzh); }
+    d.appendChild(play); d.appendChild(pb); body.appendChild(d);
+  });
+}
+$("#essayBack").onclick = () => { speechSynthesis.cancel(); speakingId = null; renderEssays(); };
+$("#essayReadAll").onclick = () => { const e = getEssay(curEssay); if (!e) return; readMany(e.paras.map((p, i) => ({ en: p[0], id: "ep" + i })), () => renderEssayBody(e)); };
+$("#essayStop").onclick = () => { speechSynthesis.cancel(); speakingId = null; const e = getEssay(curEssay); if (e) renderEssayBody(e); };
+$("#essayToggleZh").onclick = () => {
+  const els = Array.from($("#essayReader").querySelectorAll(".pzh, .qzh"));
+  const anyMasked = els.some(z => z.classList.contains("masked"));
+  els.forEach(z => { if (anyMasked) { z.classList.remove("masked"); z.textContent = z.dataset.zh; } else { z.classList.add("masked"); z.textContent = ZH_MASK; } });
+  $("#essayToggleZh").textContent = anyMasked ? "🙈 全部隐藏中文" : "👁 全部显示中文";
+};
+$("#essayDelete").onclick = () => {
+  if (!curEssay || curEssay[0] !== "u") return;
+  if (!confirm("删除这篇自己添加的范文？")) return;
+  const id = curEssay.slice(1);
+  state.essays = (state.essays || []).filter(x => x.id !== id); save();
+  renderEssays();
+};
+$("#addEssayBtn").onclick = () => {
+  const raw = $("#essayInput").value.trim(); if (!raw) return;
+  const blocks = raw.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+  if (blocks.length < 2) { alert("请第一行写标题，然后空一行再写正文段落～"); return; }
+  const title = blocks.shift().replace(/^#+\s*/, "").trim();
+  const paras = blocks.map(b => { const m = b.split(/\s*===\s*/); return (m.length >= 2 && m[1].trim()) ? [m[0].trim(), m.slice(1).join(" ").trim()] : [b, ""]; });
+  state.essays = state.essays || [];
+  state.essays.push({ id: uid(), title: title || "我的范文", type: "我的范文", q: null, paras });
+  $("#essayInput").value = ""; save(); renderEssayList();
+  alert("已保存 ✅ 在上方列表里点开就能背了。");
+};
+
 
 /* ================= SENTENCES ================= */
 function renderSents() {
