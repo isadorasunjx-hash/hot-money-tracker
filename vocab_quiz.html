@@ -465,10 +465,28 @@ const DAY35 = [
   ["treat","招待；款待；对待"],["trick","恶作剧；花招；戏法"],["Halloween","万圣节前夜"],["puppy","小狗"],
   ["teeth","牙齿（tooth 的复数）"],["either or","要么…要么；二者选一"],["option","选择；选项"],["enemy","敌人"],
 ];
+const APPEARANCE = [
+  // 身材体型 Height & build
+  ["tall and slim","身材高挑"],["short and fat","矮胖"],["stout","结实的；矮胖的"],["skinny","瘦骨嶙峋的"],
+  ["plump","丰满的"],["medium height and build","身材中等"],["fat","胖的（贬义、不礼貌）"],["overweight","超重的"],
+  // 外貌 Appearance
+  ["nice","漂亮的"],["beautiful","美丽的"],["good-looking","好看的"],["gorgeous","美艳的"],["elegant","文雅端庄的"],
+  ["pretty","可爱的；漂亮的"],["plain","相貌平平的；普通的"],["handsome","英俊的"],["ugly","丑陋的"],
+  // 头发 Hair
+  ["straight hair","直发"],["wavy","大波浪卷的"],["curly","小卷发的"],["brown","棕色的"],["fair hair","金发"],
+  ["blonde","金发碧眼的"],["dyed hair","染发"],["ponytail","马尾辫"],["long/short plaits","长 / 短辫"],
+  ["bald / balding","秃头的；开始秃的"],["parted in the middle","中分"],
+  // 明显特征 Noticeable features
+  ["freckle","雀斑"],["pierced ear","耳洞"],["wearing glasses","戴眼镜"],["contact lenses","隐形眼镜"],
+  ["bad skin","粗糙的皮肤"],["lovely complexion","娇好的面色"],["tattoo","刺青；文身"],["scar","疤痕"],
+  ["birthmark","胎记"],["deep voice","低沉的声音"],["angular","棱角分明的"],["beard","络腮胡子"],["moustache","八字须；上唇胡"],
+];
+
 const SEED_DECKS = [
   { key: "day31", name: "脑洞部长31天内容", words: PRESET },
   { key: "day34", name: "脑洞部长34天内容", words: DAY34 },
   { key: "day35", name: "脑洞部长35天内容", words: DAY35 },
+  { key: "appearance", name: "外貌特征词汇", words: APPEARANCE },
 ];
 
 let idc = 0;
@@ -1122,7 +1140,7 @@ function buildDict() {
   WORD_DICT = {};
   const add = (en, zh) => { const k = (en || "").toLowerCase().trim(); if (k && !WORD_DICT[k]) WORD_DICT[k] = zh; };
   if (window.EXAM_DECKS) for (const key in window.EXAM_DECKS) window.EXAM_DECKS[key].forEach(p => add(p[0], p[1]));
-  [PRESET, DAY34, DAY35].forEach(arr => arr && arr.forEach(p => add(p[0], p[1])));
+  [PRESET, DAY34, DAY35, APPEARANCE].forEach(arr => arr && arr.forEach(p => add(p[0], p[1])));
   return WORD_DICT;
 }
 function lookupWord(w) {
